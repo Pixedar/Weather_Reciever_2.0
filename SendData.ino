@@ -91,6 +91,44 @@ void sendError(String error) {
   client.stop();
 }
 
+void sendTempRange() {
+  if (client.connect(server, 80)) {
+    String debugApikey = "T44K8QM9YHVD73WG";
+    String postStr = debugApikey;
+    postStr +="&field1=";
+    postStr+=String(_max);
+    postStr +="&field2=";
+    postStr+=String(_min);
+    client.print(F("POST /update HTTP/1.1\n"));
+    client.print(F("Host: api.thingspeak.com\n"));
+    client.print(F("Connection: close\n"));
+    client.print("X-THINGSPEAKAPIKEY: "+debugApikey+"\n");
+    client.print(F("Content-Type: application/x-www-form-urlencoded\n"));
+    client.print(F("Content-Length: "));
+    client.print(postStr.length());
+    client.print(F("\n\n"));
+    client.print(postStr);
+  }
+  client.stop();
+  
+  EEPROM.begin(40);
+  delay(5);
+  if(_max >=0){
+       EEPROM.put(30,(byte)(floor(_max)));
+  }else{
+      EEPROM.put(30,(byte)(floor(fabs(_max))+50));
+  }  
+  EEPROM.put(31,(byte)((fabs(_max) - floor(fabs(_max)))*100));
+
+  if(_min >=0){
+       EEPROM.put(32,(byte)(floor(_min)));
+  }else{
+      EEPROM.put(32,(byte)(floor(fabs(_min))+50));
+  }  
+  EEPROM.put(33,(byte)((fabs(_min) - floor(fabs(_min)))*100)); 
+  EEPROM.end();
+}
+
 void sendDailyMaxima() {
   if (client.connect(server, 80)&&millis() >= 86400000l-sendInterval) {     
     char separationCharacter = ',';
@@ -172,4 +210,6 @@ void sendDailyMaxima() {
     dailyAverangeWindMaxima[1] = 0;
   }
   client.stop();
+  delay(100);
+  sendTempRange();  ///////////////////////////// DEBUG ONLY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 }

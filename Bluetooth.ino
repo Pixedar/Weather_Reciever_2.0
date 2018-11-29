@@ -117,7 +117,11 @@ void readBluetoothCommands() {
             enableKnob = true;
           }
           break;
+        case 14: /////DEBUG ONLY !!!!!!!!!!!!!!!!
+          homeDhtInterval = 89000;
+          break;
         }
+      
         Serial.flush();
         if (realTimeWind) {
           mySerial.flush();

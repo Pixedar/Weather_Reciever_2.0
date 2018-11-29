@@ -47,9 +47,11 @@ boolean enableKnob = false; //////
 boolean realTimeWind = false;
 boolean turnOffLed = false;
 boolean recieveDataFormInternet = false;
+boolean autoTempRangeMode = true;
 
 long sendInterval = 180000;
 int dhtInterval = 3000;
+int homeDhtInterval = 3000;
 int windInterval  = 492;
 unsigned long dayTimeInterval = 60000;
 int analogReadInterval = 300;
@@ -103,8 +105,8 @@ int samples = 0;
 
 byte rain =0;
 
-int _max;
-int _min;
+float _max;
+float _min;
 uint8_t _day;
 int8_t _month;
 
@@ -166,7 +168,7 @@ void setup()
 {
   Serial.begin(115200);
   mySerial.begin(38400);
-
+  
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
   pinMode(GREEN_PIN,OUTPUT);
@@ -244,7 +246,11 @@ void setup()
   
   timeClient.update();
   delay(300);
-  setMaxMin();
+  if(autoTempRangeMode){
+      initialiseAutoTempRange();
+  }else{
+      setMaxMin();
+  }
   epochTime = timeClient.getEpochTime();
   timeOffset = millis();
 
@@ -275,10 +281,18 @@ void setup()
   display.print(F("Interval: "));
   display.println(String(sendInterval/1000)+" s");
   display.print(F("Max temp: "));
-  display.print(_max/10.0f,1);
+  if(autoTempRangeMode){
+      display.print(_max,1);
+  }else{
+      display.print(_max/10.0f,1);
+  }
   display.println(F(" C"));
   display.print(F("Min temp: "));
-  display.print(_min/10.0f,1);
+  if(autoTempRangeMode){
+      display.print(_min,1);
+  }else{
+      display.print(_min/10.0f,1);
+  }
   display.print(F(" C"));
   display.display();
   delay(2700);
@@ -338,13 +352,19 @@ void loop()
       epochTime = timeClient.getEpochTime();
       timeOffset = millis();
       delay(300);
-      setMaxMin();
+      if(!autoTempRangeMode){
+        setMaxMin();
+      }else{
+        ntpTest();  
+      }
+      
       syncTime = millis();
     }
     updateTime();
     turnOffLedAtSpecyficTime();
     calculateDailyMaxima();
     sendDailyMaximaTimeCheck();
+    calculateTempRange(tempO, _hour,0.5f);
     tempSum = 0;
     humSum =0;
     presSum = 0;
@@ -427,7 +447,7 @@ if(millis() > displayBrightnesTime + DISPLAY_BRIGHTNESS_INTERVAL){
 
 }
 void homeSensorsRead(){
-    if(millis() > dhtTime+ 3000&&!startReading){  
+    if(millis() > dhtTime+ homeDhtInterval&&!startReading){  
       dht.resetData();
       digitalWrite(DHTPIN, HIGH);
       startReading = true;

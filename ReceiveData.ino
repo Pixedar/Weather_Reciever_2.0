@@ -30,7 +30,7 @@ boolean getData() {
      return false;  
     }
     
-    if (data[0] > 50) {
+    if (data[0] >= 50.0f) {
       tempO= (data[0]-50) + (float)(data[1]/100.0f);
       tempO*=-1;
     } else {

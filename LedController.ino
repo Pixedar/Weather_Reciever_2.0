@@ -63,7 +63,12 @@ int getColor(int8_t value,boolean hsv){
     case 3: return map(pres*k,maxPressure*k,minPressure*k,m,0);
     case 1: return map(temp*k,maxInsideTemp*k,minInsideTemp*k,m,0);
     case 2: return map(hum*k,maxInsideHum*k,minInsideHum*k,m,0);
-    case 4: return map(tempO*k,_max,_min,m,0);
+    case 4: 
+     if(autoTempRangeMode){
+       return map(tempO,_max,_min,m,0);
+     }else{
+       return map(tempO*k,_max,_min,m,0);
+     }
     case 5: return map(humO,minOutsideHum,maxOutsideHum,0,m);
   //  case 6: return map(((currentWind + 0.5*lastCurrentWind)/1.5f)*k,0,maxWind*k,m,0);
     case 7: return map(windColor*k,0,maxWind*k,0,m);
