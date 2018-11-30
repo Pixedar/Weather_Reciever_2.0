@@ -6,6 +6,33 @@ float abslouteMaxTemp =-100;
 float abslouteMinTemp =-100;
 float lastAvg = 0;
 
+float maxTable[] ={
+0.011335028f,
+0.022070985f,
+0,
+0.009418906f,
+0.034140173f,
+0.124199318f,
+0.356163907f,
+0.594231765f,
+0.780979154f,
+0.936013968f,
+0.989288051f,
+0.981075812f,
+1.0f,
+0.984945983f,
+0.915449663f,
+0.797914673f,
+0.608242649f,
+0.362355032f,
+0.26364263f,
+0.195025128f,
+0.149101559f,
+0.131409133f,
+0.122212128f,
+0.058693905f,
+};
+
 void initialiseAutoTempRange(){
     EEPROM.begin(40);
     float maxG = 0;
@@ -36,7 +63,6 @@ void initialiseAutoTempRange(){
     }
     
    EEPROM.end();
-
 }
 
 void calculateTempRange(float t, int8_t h,float scale){
@@ -60,7 +86,8 @@ void calcMax(float f, int8_t h,float scale,float avg){
     if(abslouteMaxTemp > f){
       abslouteMaxTemp = f;
    }
-  float p = (-pow(h-12.0f,4)+2800.0f)/2800.0f;
+  //float p = (-pow(h-12.0f,4)+2800.0f)/2800.0f;
+   float p = maxTable[h];
   if(p <0){
      p =0;
   }
@@ -84,7 +111,8 @@ void calcMin(float f, int8_t h,float scale,float avg){
     if(abslouteMinTemp < f){
       abslouteMinTemp = f;
    }
-  float p = (pow(h-12.0f,4))/16000.0f;
+ // float p = (pow(h-12.0f,4))/16000.0f;
+  float p = 1.0f - maxTable[h];
   if(p >1){
      p =1;
   }

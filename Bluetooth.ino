@@ -238,8 +238,13 @@ void sendSettings(boolean state) {
   bytes[7] = byte(minPressure - 900);
 //  bytes[8] = byte(monthMax[_month]/10);
  // bytes[9] = byte(monthMin[_month]/10);
+ if(autoTempRangeMode){
+  bytes[8] = byte(_max*10);
+  bytes[9] = byte(_min*10);
+ }else{
   bytes[8] = byte(_max/10);
   bytes[9] = byte(_min/10);
+ }
   bytes[10] = maxOutsideHum;
   bytes[11] = minOutsideHum;
   bytes[12] = maxAverangeWind;
