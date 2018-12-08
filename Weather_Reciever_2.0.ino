@@ -168,7 +168,7 @@ void setup()
 {
   Serial.begin(115200);
   mySerial.begin(38400);
-    
+
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
   pinMode(GREEN_PIN,OUTPUT);
@@ -364,7 +364,7 @@ void loop()
     turnOffLedAtSpecyficTime();
     calculateDailyMaxima();
     sendDailyMaximaTimeCheck();
-    calculateTempRange(tempO, _hour,0.47f);
+    calculateTempRange(tempO, _hour,0.46f);
     tempSum = 0;
     humSum =0;
     presSum = 0;

@@ -48,14 +48,13 @@ boolean getData() {
           humO = data[5]-100;
           rain =0;
         }
-      } else {
-        humO = 100;
-      }
-      if (index > 6) {
+      }else if (index > 6) {
         rain = data[6];
-      } else {
-        rain  =0;
+      }else {     
+        humO = 100;
+        rain =0;
       }
+      
     } else if (index > 2) {
       averangeWind = windSum/windCounter;
       windSum =0;
@@ -67,12 +66,13 @@ boolean getData() {
     }else{
       rain = 0;
       humO =  data[2]-100;
-    }
-      if (index > 3) {
+     if (index > 3) {
         rain = data[3];
       } else {
         rain =0;
       }
+    }
+    
     } else {
       humO = 100;
       rain  =0;

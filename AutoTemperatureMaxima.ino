@@ -91,13 +91,19 @@ void calcMax(float f, int8_t h,float scale,float avg){
   if(p <0){
      p =0;
   }
- 
+//      Serial.println("f" + String(f));
+//    Serial.println("h" + String(h));
+//  Serial.println("scale" + String(scale));
+//   Serial.println("avg" + String(avg));
+//  Serial.println("s" + String(p));
   if(avg-lastAvg >0.0f){
     if(_max < abslouteMaxTemp+10){
       _max+=(((avg))-lastAvg)*scale*p*(1-pow((_max/(abslouteMaxTemp+10)),4) );
+ //     Serial.println("p1" + String((((avg))-lastAvg)*scale*p*(1-pow((_max/(abslouteMaxTemp+10)),4) )));
     }
   }else{
       _max+=(((avg))-lastAvg)*scale*p;
+  //     Serial.println("p2" + String((((avg))-lastAvg)*scale*p));
   }
 
 
@@ -133,15 +139,11 @@ void calcMin(float f, int8_t h,float scale,float avg){
 
 
 void addToArr(float x){
-  float f;
-   for(int i =dataSize-1; i <=0;i--){
-      f = data[i];
-      if(i == dataSize-1){
-        data[i] = x;
-      }
-      if(i-1 >= 0){
-        data[i-1] = f;
-      }
+  float f = data[dataSize-1];
+    data[dataSize-1] = x;
+   for(int i =0; i< dataSize-2;i++){
+        data[i] = data[i+1];
    }
+   data[dataSize-2] = f;
 }
 
