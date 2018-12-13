@@ -63,6 +63,8 @@ void initialiseAutoTempRange(){
     }
     
    EEPROM.end();
+   abslouteMaxTemp = _max +0.5;
+   abslouteMinTemp = _min -0.5;
 }
 
 void calculateTempRange(float t, int8_t h,float scale){
