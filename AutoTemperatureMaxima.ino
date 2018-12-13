@@ -5,7 +5,7 @@ float data[440];
 float abslouteMaxTemp =-100;
 float abslouteMinTemp =-100;
 float lastAvg = 0;
-
+float sc = 1.0f;
 float maxTable[] ={
 0.011335028f,
 0.022070985f,
@@ -76,21 +76,21 @@ void calculateTempRange(float t, int8_t h,float scale){
   for(int i =0; i < size;i++){
     sum+=data[i];
   }
+  sc =(float)(sendInterval/180000.0f);
   float avg = sum/size;
-  calcMax(t,h,scale,avg);
-  calcMin(t,h,scale,avg);
+  calcMax(t,h,scale*sc,avg);
+  calcMin(t,h,scale*sc,avg);
   lastAvg = avg;
 }
 
 void calcMax(float f, int8_t h,float scale,float avg){
-    if(abslouteMaxTemp > f){
+    if(f >abslouteMaxTemp){
       abslouteMaxTemp = f;
    }
+   abslouteMaxTemp-=0.0000288f*sc;
   //float p = (-pow(h-12.0f,4)+2800.0f)/2800.0f;
    float p = maxTable[h];
-  if(p <0){
-     p =0;
-  }
+
 //      Serial.println("f" + String(f));
 //    Serial.println("h" + String(h));
 //  Serial.println("scale" + String(scale));
@@ -114,17 +114,15 @@ void calcMax(float f, int8_t h,float scale,float avg){
 
 
 void calcMin(float f, int8_t h,float scale,float avg){
-    if(abslouteMinTemp < f){
+    if(f < abslouteMinTemp){
       abslouteMinTemp = f;
    }
+    abslouteMinTemp+=0.0000288f*sc;
  // float p = (pow(h-12.0f,4))/16000.0f;
   float p = 1.0f - maxTable[h];
-  if(p >1){
-     p =1;
-  }
   
   if(avg-lastAvg <0.0f){
-    if(_min < abslouteMinTemp-10){
+    if(_min > abslouteMinTemp-10){
       _min-=(((avg))-lastAvg)*scale*p*(1-pow((_min/(abslouteMinTemp-10)),4) );
     }
   }else{

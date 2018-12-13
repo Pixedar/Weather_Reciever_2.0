@@ -19,14 +19,25 @@ void sendData() {
           postStr +="&field3=";
           postStr += String(humO);
         }
-      }    
-      if (maxCurrentWind <0||maxCurrentWind ==100) {
-        error+="maxCurrentWind= "+String(maxCurrentWind);
-      } else {
+      }  
+
+      if(averangeWind <0|| averangeWind >99){
+        error+="averangeWind= "+String(averangeWind);
+      }else{
         postStr +="&field6=";
         postStr += String(averangeWind);
+      }
+      
+      if (maxCurrentWind <0||maxCurrentWind >99) {
+        error+="maxCurrentWind= "+String(maxCurrentWind);
+      } else {
         postStr +="&field7=";
         postStr += String(maxCurrentWind);
+      }
+      
+      if(rain <0|| rain >99){
+        error+="rain= "+String(rain);
+      }else{
         postStr +="&field8=";
         postStr += String(rain);
       }
@@ -113,14 +124,14 @@ void sendTempRange() {
   
   EEPROM.begin(40);
   delay(5);
-  if(_max >=0){
+  if(_max >=-2&& _max < 47){
        EEPROM.put(30,(byte)(floor(_max)));
   }else{
       EEPROM.put(30,(byte)(floor(fabs(_max))+50));
   }  
   EEPROM.put(31,(byte)((fabs(_max) - floor(fabs(_max)))*100));
 
-  if(_min >=0){
+  if(_min >=-40&& _min < 36){
        EEPROM.put(32,(byte)(floor(_min)));
   }else{
       EEPROM.put(32,(byte)(floor(fabs(_min))+50));
@@ -175,7 +186,9 @@ void sendDailyMaxima() {
     postStr +=String(dailyPressureMaxima[0]);
     postStr +=separationCharacter;
     postStr +=String(dailyPressureMaxima[1]);
-
+    postStr +="&field8=";
+    postStr +=String(dailyRain);
+    
     client.print(F("POST /update HTTP/1.1\n"));
     client.print(F("Host: api.thingspeak.com\n"));
     client.print(F("Connection: close\n"));
@@ -186,6 +199,7 @@ void sendDailyMaxima() {
     client.print("\n\n");
     client.print(postStr);
 
+    dailyRain = 0;
     dailySamples = 0;
     dailyPressureSum=0;
     dailyInsideTemperatureSum =0;

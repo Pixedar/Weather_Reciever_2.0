@@ -132,6 +132,7 @@ float dailyOutsideHumiditySum;
 float dailyOutsideTemperatureSum;
 float dailyWindSum;
 float dailyAverangeWindSum;
+int   dailyRain;
 
 float dailyPressureMaxima[] = {2000,0};
 float dailyInsideTemperatureMaxima[] = {100,0};
@@ -535,6 +536,7 @@ void calculateDailyMaxima(){
  dailyOutsideTemperatureSum+=tempO;
  dailyWindSum+=maxCurrentWind;
  dailyAverangeWindSum+=averangeWind;
+ dailyRain+=rain;
  if(pres < dailyPressureMaxima[0]){
   dailyPressureMaxima[0] = pres;
  }else if(pres > dailyPressureMaxima[1]){
