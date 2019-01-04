@@ -1,4 +1,4 @@
-
+float scale = 0.46f;
 int size = 0;
 int dataSize =440;
 float data[440];
@@ -53,21 +53,25 @@ void initialiseAutoTempRange(){
     }else{
        minG = (float)(a) + ((float)b/100.0f);
     }
-    _min = minG;
-    _max = maxG;
-    if(maxG  < -25&&maxG  > 40){
+    EEPROM.end();
+
+    if(maxG  < -25||maxG  > 40){
       _max = -10;
+    }else{
+      _max = maxG;
+      abslouteMaxTemp = _max +0.5;
     }
-    if(minG  < -25&&minG  > 40){
+   
+    if(minG  < -25||minG  > 40){
       _min = 40;
-    }
-    
-   EEPROM.end();
-   abslouteMaxTemp = _max +0.5;
-   abslouteMinTemp = _min -0.5;
+    }else{
+      _min = minG;
+      abslouteMinTemp = _min -0.5;
+   }
+
 }
 
-void calculateTempRange(float t, int8_t h,float scale){
+void calculateTempRange(float t, int8_t h){
    if(size < dataSize){
       size++;
       data[size] = t;

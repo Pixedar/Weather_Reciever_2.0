@@ -1,7 +1,7 @@
 void readBluetoothCommands() {
   if (Serial.available()) {
     unsigned long t = millis();
-    byte a,b,c;
+    byte a,b,c,d;
     while (millis() < t + 3000&&!displayHeartBeatEnabled) {
       delay(2);
       if (Serial.available()) {
@@ -117,7 +117,18 @@ void readBluetoothCommands() {
             enableKnob = true;
           }
           break;
-        case 14: /////DEBUG ONLY !!!!!!!!!!!!!!!!
+        case 14:
+          d = Serial.read();
+          if(d >byte(0)&& d <=byte(100)){
+            scale = ((float)d/100.0f)*2.0f;
+            display.println(F("AutoTemp scale:"));
+            display.print(String(d));
+            display.print("%");
+          }else{
+            display.println(F("wrong value"));
+          }
+            display.display();
+        case 15: /////DEBUG ONLY !!!!!!!!!!!!!!!!
           homeDhtInterval = 89000;
           break;
         }

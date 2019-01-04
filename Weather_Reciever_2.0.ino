@@ -10,6 +10,7 @@
 #include "Time.h"
 #include <TimeLib.h>
 #include <EEPROM.h>
+#include "ThingSpeak.h"
 #include <Fonts/FreeSansBold12pt7b.h>
 
 #define OLED_RESET 4
@@ -34,10 +35,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP,"tempus1.gum.gov.pl");
 WiFiClient client;
 DHT dht(DHTPIN, DHT22,11);
-
-
-String apiKey = "12RUI1FA6G5C5CWM"; 
-String dailyMaximaApiKey = "VJFQUX9HYOWZAQT4";     
+   
 const char *ssid =  "WLAN-7F8H56"; 
 const char *pass =  "ifDii1BFF3Dfh0d";
 const char* server = "api.thingspeak.com";
@@ -96,14 +94,14 @@ byte maxCurrentWind = 0;
 byte currentWind = 0;
 int windCounter = 0;
 float windSum = 0;
-float lastWindA;
+//float lastWindA;
 
 float temp = 0;
 float hum = 0;
 float pres = 0;
 int samples = 0;
 
-byte rain =0;
+int rain =0;
 
 float _max;
 float _min;
@@ -224,7 +222,7 @@ void setup()
 
  // display.println(F("WiFi connecting"));
  // display.println(ssid);
-
+  ThingSpeak.begin(client);
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) 
   {
@@ -365,7 +363,7 @@ void loop()
     turnOffLedAtSpecyficTime();
     calculateDailyMaxima();
     sendDailyMaximaTimeCheck();
-    calculateTempRange(tempO, _hour,0.46f);
+    calculateTempRange(tempO, _hour);
     tempSum = 0;
     humSum =0;
     presSum = 0;
