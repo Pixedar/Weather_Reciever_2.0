@@ -107,7 +107,8 @@ void readBluetoothCommands() {
             display.testDim(0);
           }
           break;
-        case 12:               
+        case 12:   
+          homeDhtInterval = 89000;    /////DEBUG ONLY !!!!!!!!!!!!!!!!        
           getHearBeatParams(Serial.read());
           break;
         case 13:
@@ -119,8 +120,8 @@ void readBluetoothCommands() {
           break;
         case 14:
           d = Serial.read();
-          if(d >byte(0)&& d <=byte(100)){
-            scale = ((float)d/100.0f)*2.0f;
+          if(d >byte(0)&& d <=byte(125)){
+            maximaScale = ((float)d/100000000.0f);
             display.println(F("AutoTemp scale:"));
             display.print(String(d));
             display.print("%");

@@ -2,42 +2,57 @@ const char * apiKey = "12RUI1FA6G5C5CWM";
 const char * dailyMaximaApiKey = "VJFQUX9HYOWZAQT4"; 
 const char * debugApikey = "V9BDERAUY8VGWJU7";
 const char * tempRangeApikey = "T44K8QM9YHVD73WG";
+float lastTempO =0;
+float lastAvgWind =0;
+float lastWind =0;
+int lastRain =0;
+int lastHumO =0;
+boolean firstTime = true;
+boolean repeat =true;
 void sendData() { 
-   unsigned long id = 333150;
+   const unsigned long id = 333150;
    String error = "";
     if (!dataNotReceived) {
       if (humO ==0&&tempO==0) {
         error+="dht error ";
       } else {
-        if (tempO <-50||tempO >50) {
+        if (tempO <-39||tempO >40||((abs(lastTempO-tempO)>3.75f)&&!firstTime)) {
           error+="tempO= "+String(tempO);
         } else {
           ThingSpeak.setField(1, String(tempO,2));
         }
-        if (humO >100) {
+        if (humO >100||((abs(lastHumO - humO)>37)&&!firstTime)) {
           error+="humO= "+String(humO);
         } else {     
          ThingSpeak.setField(3, humO);
         }
       }  
 
-      if(averangeWind <0|| averangeWind >99){
+      if(averangeWind <0|| averangeWind >49||((abs(lastAvgWind - averangeWind) > 10)&&!firstTime)){
         error+="averangeWind= "+String(averangeWind);
       }else{ 
         ThingSpeak.setField(6,String(averangeWind,2));
       }
       
-      if (maxCurrentWind <0||maxCurrentWind >99) {
+      if (maxCurrentWind <0||maxCurrentWind >70||(abs(lastWind - maxCurrentWind)>40)&&!firstTime) {
         error+="maxCurrentWind= "+String(maxCurrentWind);
       } else {
         ThingSpeak.setField(7,maxCurrentWind);
       }
       
-      if(rain <0|| rain >99){
+      if(rain <0|| rain >99||(abs(lastRain - rain) > 33&&!firstTime)){
         error+="rain= "+String(rain);
       }else{
         ThingSpeak.setField(8,rain);
       }
+      lastHumO = humO;
+      lastTempO = tempO;
+      lastRain = rain;
+      lastAvgWind =  averangeWind;
+      lastWind = maxCurrentWind;
+      if(firstTime){
+        firstTime = false;
+      } 
     }
     if (temp != 0.0f) {
       ThingSpeak.setField(2,String(temp,2));
@@ -54,48 +69,33 @@ void sendData() {
     } else {
       ThingSpeak.setField(5,String(pres,2));
     }
+  dataError = false;
   displayConnectionError(ThingSpeak.writeFields(id, apiKey));
-
   if (!error.equals("")) {
     sendError(error);
+    dataError = true;
   }
 }
 
 void sendError(String error) {
-  unsigned long id = 556803;
+  const unsigned long id = 556803;
   displayConnectionError(ThingSpeak.writeField(id, 1, error, debugApikey));  
 }
 
-
-
-void sendTempRange() {  
-  unsigned long id = 639828;
-  displayConnectionError(ThingSpeak.writeField(id, 1, _max, tempRangeApikey));    
-  displayConnectionError(ThingSpeak.writeField(id, 2, _min, tempRangeApikey));   
-  EEPROM.begin(40);
-  delay(5);
-  if(_max >=-2&& _max < 47){
-       EEPROM.put(30,(byte)(floor(_max)));
-  }else{
-      EEPROM.put(30,(byte)(floor(fabs(_max))+50));
-  }  
-  EEPROM.put(31,(byte)((fabs(_max) - floor(fabs(_max)))*100));
-
-  if(_min >=-40&& _min < 36){
-       EEPROM.put(32,(byte)(floor(_min)));
-  }else{
-      EEPROM.put(32,(byte)(floor(fabs(_min))+50));
-  }  
-  EEPROM.put(33,(byte)((fabs(_min) - floor(fabs(_min)))*100)); 
-  EEPROM.end();
-}
 void displayConnectionError(int httpCode ){
     if(httpCode != 200){
-    clearDisplay();
+     clearDisplay();
+     display.print(F("HTTP ERROR"));
      display.println(String(httpCode));
      display.display();
      delay(2000);
-  } 
+     if(repeat&&!firstTime){
+      repeat = false;
+      sendData();
+    }
+  }else{
+    repeat = true; 
+  }
 }
 
 void sendDailyMaxima() {
@@ -155,7 +155,7 @@ void sendDailyMaxima() {
     ThingSpeak.setField(8, postStr);
     postStr = "";
     
-    unsigned long id =  544874;
+    const unsigned long id =  544874;
     displayConnectionError(ThingSpeak.writeFields(id,dailyMaximaApiKey)); 
   
     dailyRain = 0;
@@ -182,9 +182,7 @@ void sendDailyMaxima() {
     dailyAverangeWindMaxima[0] = 3000;
     dailyAverangeWindMaxima[1] = 0;
   }
-
   delay(100);
-  sendTempRange();  ///////////////////////////// DEBUG ONLY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 }
 
 

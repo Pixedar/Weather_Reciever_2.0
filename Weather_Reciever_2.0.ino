@@ -60,8 +60,8 @@ float brightness = 1;
 float lastBrightness = brightness;
 int8_t startDimHour = 22;
 int8_t startDimMinute = 22;
-int8_t stopDimHour = 6;
-int8_t stopDimMinute = 7;
+int8_t stopDimHour = 9;
+int8_t stopDimMinute = 40;
 
 boolean clockColorMode = false;
 int8_t colorMode = 1;
@@ -70,17 +70,17 @@ int8_t colorModesHSV[2] = {0,6};
 int monthMax[] = {73,97,157,233,270,300,337,340,293,203,133,87};
 int monthMin[] = {-216,-213,-179,-60,6,68,94,90,38,-44,-181,-225}; 
 
-int8_t maxAverangeWind= 8;
-int8_t maxWind = 20; 
-int8_t maxInsideTemp = 28;
-int8_t minInsideTemp = 19;
-int8_t maxInsideHum = 80;
-int8_t minInsideHum = 34;
+float maxAverangeWind= 8;
+float maxWind = 20; 
+float maxInsideTemp = 28;
+float minInsideTemp = 19;
+float maxInsideHum = 80;
+float minInsideHum = 34;
 int8_t maxOutsideHum = 100;
-int8_t minOutsideHum = 0;
+int8_t minOutsideHum = 10;
 int8_t maxRain = 8;
-int maxPressure = 990;
-int minPressure = 969;
+float maxPressure = 990;
+float minPressure = 969;
 
 int r;
 int g;
@@ -119,6 +119,7 @@ boolean startReading = false;
 int8_t menuCounter = 0;
 boolean lock = false;
 boolean dataNotReceived = false;
+boolean dataError = false;
 float presSum =0;
 float tempSum =0;
 float humSum =0;
@@ -227,8 +228,7 @@ void setup()
   while (WiFi.status() != WL_CONNECTED) 
   {
     delay(200);
-    display.print(F("."));
-    display.display();
+    displayDot();
   }
   clearDisplay();
   if(response){
@@ -237,22 +237,31 @@ void setup()
     display.println(F("Trasmitter error"));
   }
   display.println(F("WiFi connected"));
+  display.println(F("Getting maxima"));
   display.display();
-  delay(700);
-
+  
+  sendError("RECEIVER RESET");
+  displayDot();
+  
   timeClient.begin();
   timeClient.setTimeOffset(7200);
   
   timeClient.update();
   delay(300);
   if(autoTempRangeMode){
-      initialiseAutoTempRange();
+     ntpTest();  
+     _month = month(timeClient.getEpochTime());
+     _day = day(timeClient.getEpochTime());
+     displayDot();
+     initAutoRange();
   }else{
       setMaxMin();
   }
   epochTime = timeClient.getEpochTime();
   timeOffset = millis();
-
+  if(!autoTempRangeMode){
+    delay(700);
+  }
   clearDisplay();
  // display.println(F("       Today is "));
   display.print(year(timeClient.getEpochTime()));
@@ -316,7 +325,10 @@ void setup()
   displayTime = millis();
   rgbTime = millis();
 }
-
+void displayDot(){
+ display.print(F("."));
+ display.display();
+}
 void loop() 
 {
   if (mySerial.available()||dataNotReceived) {
@@ -363,7 +375,8 @@ void loop()
     turnOffLedAtSpecyficTime();
     calculateDailyMaxima();
     sendDailyMaximaTimeCheck();
-    calculateTempRange(tempO, _hour);
+    calculateAutoRange(_month);
+    sendAutoRangeToServer();
     tempSum = 0;
     humSum =0;
     presSum = 0;
@@ -573,28 +586,33 @@ void calculateDailyMaxima(){
 }
 
  void ntpTest(){
-  if(year(timeClient.getEpochTime()) < 2018){
+  if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
    timeClient.update();
    delay(1500);
    }else{
     return;
    }
-   if(year(timeClient.getEpochTime()) < 2018){
+   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
      NTPClient timeClient(ntpUDP,"tempus2.gum.gov.pl");
      timeClient.update();
      delay(700);
    }
-   if(year(timeClient.getEpochTime()) < 2018){
+   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
      NTPClient timeClient(ntpUDP,"ntp1.tp.pl");
      timeClient.update();
      delay(700);
    }
-   if(year(timeClient.getEpochTime()) < 2018){
+   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
      NTPClient timeClient(ntpUDP,"ntp1.tp.pl");
      timeClient.update();
      delay(700);
    }
-   if(year(timeClient.getEpochTime()) < 2018){
+   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
+     NTPClient timeClient(ntpUDP,"ntp.itl.waw.pl");
+     timeClient.update();
+     delay(700);
+   }
+   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
       clearDisplay();
       display.println("NTP error");
       display.display();
