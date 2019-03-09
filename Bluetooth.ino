@@ -132,6 +132,9 @@ void readBluetoothCommands() {
         case 15: /////DEBUG ONLY !!!!!!!!!!!!!!!!
           homeDhtInterval = 89000;
           break;
+        case 16:
+          autoRangeEnabled = boolean(Serial.read());
+          break;
         }
       
         Serial.flush();
@@ -183,48 +186,48 @@ void getMaxima() {
   byte a,b;
   switch(Serial.read()) {
   case 0: 
-    maxInsideTemp =Serial.read();
-    minInsideTemp = Serial.read();
-    saveByte((byte)maxInsideTemp,9);
-    saveByte((byte)minInsideTemp,10);
+    maxInsideTemp[1] =Serial.read();
+    minInsideTemp[1] = Serial.read();
+    saveByte((byte)maxInsideTemp[1],9);
+    saveByte((byte)minInsideTemp[1],10);
     break;
   case 1:
-    maxInsideHum = Serial.read();
-    minInsideHum = Serial.read();
-    saveByte((byte)maxInsideHum ,11);
-    saveByte((byte)minInsideHum ,12);
+    maxInsideHum[1] = Serial.read();
+    minInsideHum[1] = Serial.read();
+    saveByte((byte)maxInsideHum[1] ,11);
+    saveByte((byte)minInsideHum[1] ,12);
     break;
   case 2:
     a = Serial.read();
     b =Serial.read();
-    maxPressure = a+900;
-    minPressure = b+900;
+    maxPressure[1] = a+900;
+    minPressure[1] = b+900;
     saveByte((byte)a ,13);
     saveByte((byte)b ,14);
     break;
   case 3:
    // monthMax[_month] = Serial.read()*10;
  //   monthMin[_month] =Serial.read()*10;
-    _max =Serial.read()*10;
-    _min = Serial.read()*10;
+    _max[1] =Serial.read()*10;
+    _min[1] = Serial.read()*10;
     break;
   case 4:
-    maxOutsideHum = Serial.read();
-    minOutsideHum = Serial.read();
-    saveByte((byte)maxOutsideHum ,15);
-    saveByte((byte)minOutsideHum ,16);
+    maxOutsideHum[1] = Serial.read();
+    minOutsideHum[1] = Serial.read();
+    saveByte((byte)maxOutsideHum[1] ,15);
+    saveByte((byte)minOutsideHum[1] ,16);
     break;
   case 5:
-    maxAverangeWind = Serial.read();
-    saveByte((byte)maxAverangeWind ,17);
+    maxAverangeWind[1] = Serial.read();
+    saveByte((byte)maxAverangeWind[1] ,17);
     break;
   case 6:
-    maxWind =Serial.read();
-    saveByte((byte)maxWind ,18);
+    maxWind[1] =Serial.read();
+    saveByte((byte)maxWind[1] ,18);
     break;
   case 7:
-    maxRain = Serial.read();
-    saveByte((byte)maxWind ,19);
+    maxRain[1] = Serial.read();
+    saveByte((byte)maxRain[1] ,19);
     break;
   }
 }
@@ -242,26 +245,26 @@ void sendSettings(boolean state) {
   byte bytes[42];
   bytes[0] = byte(brightness*100);
   bytes[1] = byte(colorMode);
-  bytes[2] = maxInsideTemp;
-  bytes[3] = minInsideTemp;
-  bytes[4] = maxInsideHum;
-  bytes[5] = minInsideHum;
-  bytes[6] = byte(maxPressure - 900);
-  bytes[7] = byte(minPressure - 900);
+  bytes[2] = maxInsideTemp[1];
+  bytes[3] = minInsideTemp[1];
+  bytes[4] = maxInsideHum[1];
+  bytes[5] = minInsideHum[1];
+  bytes[6] = byte(maxPressure[1] - 900);
+  bytes[7] = byte(minPressure[1] - 900);
 //  bytes[8] = byte(monthMax[_month]/10);
  // bytes[9] = byte(monthMin[_month]/10);
  if(autoTempRangeMode){
-  bytes[8] = byte(_max*10);
-  bytes[9] = byte(_min*10);
+  bytes[8] = byte(_max[1]*10);
+  bytes[9] = byte(_min[1]*10);
  }else{
-  bytes[8] = byte(_max/10);
-  bytes[9] = byte(_min/10);
+  bytes[8] = byte(_max[1]/10);
+  bytes[9] = byte(_min[1]/10);
  }
-  bytes[10] = maxOutsideHum;
-  bytes[11] = minOutsideHum;
-  bytes[12] = maxAverangeWind;
-  bytes[13] = maxWind;
-  bytes[14] = maxRain;
+  bytes[10] = maxOutsideHum[1];
+  bytes[11] = minOutsideHum[1];
+  bytes[12] = maxAverangeWind[1];
+  bytes[13] = maxWind[1];
+  bytes[14] = maxRain[1];
   bytes[15] = byte(sendInterval/10000);
   bytes[16] = byte(dhtInterval/1000);
   bytes[17] = byte(windInterval/50);
@@ -277,6 +280,7 @@ void sendSettings(boolean state) {
   bytes[27] = colorModesHSV[1];
   bytes[28] =byte(recieveDataFormInternet);
   if (state) {
+    bytes[49] = byte(autoRangeEnabled);
     Serial.write(bytes, 29);
   } else {
     bytes[29] = floor(temp);
@@ -292,6 +296,7 @@ void sendSettings(boolean state) {
     bytes[39] = floor(averangeWind);
     bytes[40] = ((averangeWind - floor(averangeWind))*100);
     bytes[41] = rain;
+    bytes[42] = byte(autoRangeEnabled);
     Serial.write(bytes, 42);
   }
   Serial.flush();
@@ -342,7 +347,7 @@ int getResponse(){
 }
 
 void saveByte(byte val,int address){
-   EEPROM.begin(20);
+   EEPROM.begin(address+15);
    delay(5);
    EEPROM.put(address, val);
    EEPROM.end();

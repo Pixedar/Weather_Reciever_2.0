@@ -16,12 +16,12 @@ void sendData() {
       if (humO ==0&&tempO==0) {
         error+="dht error ";
       } else {
-        if (tempO <-39||tempO >40||((abs(lastTempO-tempO)>3.75f)&&!firstTime)) {
+        if (tempO <-39||tempO >39.9||((abs(lastTempO-tempO)>3.75f)&&!firstTime)) {
           error+="tempO= "+String(tempO);
         } else {
           ThingSpeak.setField(1, String(tempO,2));
         }
-        if (humO >100||((abs(lastHumO - humO)>37)&&!firstTime)) {
+        if (humO >100||humO < 0||((abs(lastHumO - humO)>35)&&!firstTime)) {
           error+="humO= "+String(humO);
         } else {     
          ThingSpeak.setField(3, humO);
@@ -40,7 +40,7 @@ void sendData() {
         ThingSpeak.setField(7,maxCurrentWind);
       }
       
-      if(rain <0|| rain >99||(abs(lastRain - rain) > 33&&!firstTime)){
+      if(rain <0|| rain >99||(abs(lastRain - rain) > 30&&!firstTime)){
         error+="rain= "+String(rain);
       }else{
         ThingSpeak.setField(8,rain);
@@ -70,7 +70,14 @@ void sendData() {
       ThingSpeak.setField(5,String(pres,2));
     }
   dataError = false;
-  displayConnectionError(ThingSpeak.writeFields(id, apiKey));
+  int httpCode =ThingSpeak.writeFields(id, apiKey);
+  if(httpCode != 200&&repeat&&!firstTime){
+     displayConnectionError(httpCode);
+     repeat = false;
+     sendData();
+  }else{
+      repeat = true; 
+  }
   if (!error.equals("")) {
     sendError(error);
     dataError = true;
@@ -82,19 +89,28 @@ void sendError(String error) {
   displayConnectionError(ThingSpeak.writeField(id, 1, error, debugApikey));  
 }
 
-void displayConnectionError(int httpCode ){
-    if(httpCode != 200){
+boolean displayConnectionError(int httpCode ){
+   if(httpCode != 200){
      clearDisplay();
      display.print(F("HTTP ERROR"));
      display.println(String(httpCode));
      display.display();
      delay(2000);
-     if(repeat&&!firstTime){
-      repeat = false;
-      sendData();
-    }
+     return true;
   }else{
-    repeat = true; 
+    return false;
+  }
+}
+boolean displayConnectionError(int httpCode,int del){
+   if(httpCode != 200){
+     clearDisplay();
+     display.print(F("HTTP ERROR"));
+     display.println(String(httpCode));
+     display.display();
+     delay(del);
+     return true;
+  }else{
+    return false;
   }
 }
 

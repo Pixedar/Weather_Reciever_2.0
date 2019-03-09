@@ -59,25 +59,31 @@ int getColor(int8_t value,boolean hsv){
   }else{
     m =1023;
   }
-  switch(value){
-    case 3: return map(pres*k,maxPressure*k,minPressure*k,m,0);
-    case 1: return map(temp*k,maxInsideTemp*k,minInsideTemp*k,m,0);
-    case 2: return map(hum*k,maxInsideHum*k,minInsideHum*k,m,0);
-    case 4: 
-     if(autoTempRangeMode){
-       return map(tempO,_max,_min,m,0);
-     }else{
-       return map(tempO*k,_max,_min,m,0);
-     }
-    case 5: return map(humO,minOutsideHum,maxOutsideHum,0,m);
-  //  case 6: return map(((currentWind + 0.5*lastCurrentWind)/1.5f)*k,0,maxWind*k,m,0);
-    case 7: return map(windColor*k,0,maxWind*k,0,m);
-    case 6: return map(averangeWind*k,0,maxAverangeWind*k,0,m);
-    case 8: return map(rain,0,maxRain,0,m);
-    default: return m;
+  if(autoRangeEnabled){
+    return getVal(0,m,k,value);
+  }else{
+    return getVal(1,m,k,value);
   }
 }
-
+int getVal(int index,int m,int k,int8_t value){
+    switch(value){
+    case 3: return map(pres*k,maxPressure[index]*k,minPressure[index]*k,m,0);
+    case 1: return map(temp*k,maxInsideTemp[index]*k,minInsideTemp[index]*k,m,0);
+    case 2: return map(hum*k,maxInsideHum[index]*k,minInsideHum[index]*k,m,0);
+    case 4: 
+     if(autoTempRangeMode){
+       return map(tempO,_max[index],_min[index],m,0);
+     }else{
+       return map(tempO*k,_max[index],_min[index],m,0);
+     }
+    case 5: return map(humO,minOutsideHum[index],maxOutsideHum[index],0,m);
+  //  case 6: return map(((currentWind + 0.5*lastCurrentWind)/1.5f)*k,0,maxWind*k,m,0);
+    case 7: return map(windColor*k,0,maxWind[index]*k,0,m);
+    case 6: return map(averangeWind*k,0,maxAverangeWind[index]*k,0,m);
+    case 8: return map(rain,0,maxRain[index],0,m);
+    default: return m;
+    }
+}
 
 void HSV_to_RGB(float h, float s, float v)
 {

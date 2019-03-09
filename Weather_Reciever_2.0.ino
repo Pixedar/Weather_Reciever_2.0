@@ -70,17 +70,18 @@ int8_t colorModesHSV[2] = {0,6};
 int monthMax[] = {73,97,157,233,270,300,337,340,293,203,133,87};
 int monthMin[] = {-216,-213,-179,-60,6,68,94,90,38,-44,-181,-225}; 
 
-float maxAverangeWind= 8;
-float maxWind = 20; 
-float maxInsideTemp = 28;
-float minInsideTemp = 19;
-float maxInsideHum = 80;
-float minInsideHum = 34;
-int8_t maxOutsideHum = 100;
-int8_t minOutsideHum = 10;
-int8_t maxRain = 8;
-float maxPressure = 990;
-float minPressure = 969;
+float maxAverangeWind[]= {8,8};
+float maxWind[] = {20,20}; 
+float maxInsideTemp[] = {28,28};
+float minInsideTemp[] = {19,19};
+float maxInsideHum[] = {75,75};
+float minInsideHum[] = {34,34};
+int8_t maxOutsideHum[] = {100,100};
+int8_t minOutsideHum[] = {10,10};
+int8_t maxRain[] = {8,9};
+float maxPressure[] = {990,990};
+float minPressure[] = {969.969};
+boolean autoRangeEnabled = true;
 
 int r;
 int g;
@@ -103,10 +104,12 @@ int samples = 0;
 
 int rain =0;
 
-float _max;
-float _min;
+float _max[] = {35,35};
+float _min[] = {-20,-20};
 uint8_t _day;
 int8_t _month;
+int _year;
+boolean isDST;
 
 int8_t _hour;
 int8_t _minute;
@@ -244,27 +247,20 @@ void setup()
   displayDot();
   
   timeClient.begin();
-  timeClient.setTimeOffset(7200);
+  timeClient.setTimeOffset(7200);   
+  getDateTime();
   
-  timeClient.update();
-  delay(300);
   if(autoTempRangeMode){
-     ntpTest();  
-     _month = month(timeClient.getEpochTime());
-     _day = day(timeClient.getEpochTime());
      displayDot();
      initAutoRange();
   }else{
       setMaxMin();
+      delay(700);
   }
-  epochTime = timeClient.getEpochTime();
-  timeOffset = millis();
-  if(!autoTempRangeMode){
-    delay(700);
-  }
+
   clearDisplay();
  // display.println(F("       Today is "));
-  display.print(year(timeClient.getEpochTime()));
+  display.print(_year);
    display.print(F("-"));
   if(_month < 10){
    display.print(0); 
@@ -280,26 +276,26 @@ void setup()
      display.print(_day);
   }
   display.print(F("   "));
-  display.print(hour(epochTime));
+  display.print(_hour);
   display.print(F(":"));
-  display.print(minute(epochTime));
+  display.print(_minute);
   display.print(F(":"));
-  display.print(second(epochTime));
+  display.print(_second);
   display.println();
   display.print(F("Interval: "));
   display.println(String(sendInterval/1000)+" s");
   display.print(F("Max temp: "));
   if(autoTempRangeMode){
-      display.print(_max,1);
+      display.print(_max[0],1);
   }else{
-      display.print(_max/10.0f,1);
+      display.print(_max[0]/10.0f,1);
   }
   display.println(F(" C"));
   display.print(F("Min temp: "));
   if(autoTempRangeMode){
-      display.print(_min,1);
+      display.print(_min[0],1);
   }else{
-      display.print(_min/10.0f,1);
+      display.print(_min[0]/10.0f,1);
   }
   display.print(F(" C"));
   display.display();
@@ -359,16 +355,10 @@ void loop()
     
     
     if(millis() > syncTime + SYNC_TIME_INTERVAL){
-      timeClient.update();
-      epochTime = timeClient.getEpochTime();
-      timeOffset = millis();
-      delay(300);
+      getDateTime();
       if(!autoTempRangeMode){
         setMaxMin();
-      }else{
-        ntpTest();  
       }
-      
       syncTime = millis();
     }
     updateTime();
@@ -376,7 +366,7 @@ void loop()
     calculateDailyMaxima();
     sendDailyMaximaTimeCheck();
     calculateAutoRange(_month);
-    sendAutoRangeToServer();
+    sendAutoRangeToServer(1);
     tempSum = 0;
     humSum =0;
     presSum = 0;
@@ -510,6 +500,47 @@ void updateTime(){
    _minute = minute(epochTime+offset);
    _hour = hour(epochTime+offset);
    _second = second(epochTime+offset);
+  if(isDST){
+   _hour-=1; 
+  }
+}
+void getDateTime(){
+  timeClient.update();
+  ntpTest();  
+  epochTime = timeClient.getEpochTime();
+  timeOffset = millis();
+  _year = year(timeClient.getEpochTime());
+  _month = month(timeClient.getEpochTime());
+  _day = day(timeClient.getEpochTime());
+  
+  _minute = minute(timeClient.getEpochTime());
+  _hour = hour(timeClient.getEpochTime()) -1; 
+  _second = second(timeClient.getEpochTime());
+  isDST = checkDST();
+  if(isDST){
+   _hour-=1; 
+  }
+}
+
+
+boolean checkDST(){
+  int previousSunday = _day - (((epochTime / 86400) + 4) % 7);
+  if(_month < 3 || _month > 11){
+    return false;
+  }else if(_month > 3 && _month < 11){
+    return true;
+  }else if(_month == 3){
+    if(previousSunday >=8){
+      return true;
+    }else{
+      return false;
+    }
+  }
+  if(previousSunday <=0){
+     return true;
+  }else{
+      return false;
+ }
 }
 void turnOffLedAtSpecyficTime(){
    if(_hour >= startDimHour){
@@ -625,12 +656,8 @@ void clearDisplay(){
   display.setCursor(0,0);
 }
 void setMaxMin(){
-  ntpTest();  
-  _month = month(timeClient.getEpochTime());
-  _day = day(timeClient.getEpochTime());
-
-  _max = (monthMax[_month-1]*map(_day,1,_month%2?31:30,0,100)+monthMax[_month==1?12:_month-2]*map(_day,1,_month%2?31:30,100,0))/100;
-  _min = (monthMin[_month-1]*map(_day,1,_month%2?31:30,100,0)+monthMin[_month==12?0:_month]*map(_day,1,_month%2?31:30,0,100))/100; 
+  _max[0] = (monthMax[_month-1]*map(_day,1,_month%2?31:30,0,100)+monthMax[_month==1?12:_month-2]*map(_day,1,_month%2?31:30,100,0))/100;
+  _min[0] = (monthMin[_month-1]*map(_day,1,_month%2?31:30,100,0)+monthMin[_month==12?0:_month]*map(_day,1,_month%2?31:30,0,100))/100; 
 }
 
 void displayClock(){
