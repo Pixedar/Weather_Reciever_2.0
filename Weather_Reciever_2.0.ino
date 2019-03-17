@@ -12,6 +12,8 @@
 #include <EEPROM.h>
 #include "ThingSpeak.h"
 #include <Fonts/FreeSansBold12pt7b.h>
+#include <ArduinoOTA.h>
+#include <ESP8266mDNS.h>
 
 #define OLED_RESET 4
 #define BUTTON_PIN 12
@@ -171,7 +173,7 @@ void setup()
 {
   Serial.begin(115200);
   mySerial.begin(38400);
-
+  
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
   pinMode(GREEN_PIN,OUTPUT);
@@ -226,6 +228,7 @@ void setup()
 
  // display.println(F("WiFi connecting"));
  // display.println(ssid);
+  WiFi.mode(WIFI_STA);
   ThingSpeak.begin(client);
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) 
@@ -233,6 +236,7 @@ void setup()
     delay(200);
     displayDot();
   }
+  initOTA();
   clearDisplay();
   if(response){
     display.println(F("Trasmitter connected"));

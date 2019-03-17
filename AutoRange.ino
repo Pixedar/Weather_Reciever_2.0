@@ -3,7 +3,7 @@ float absoluteMinTemp = 100;
 unsigned long sendAutoRangeTime;
 const char * autoRangeApiKey = "T44K8QM9YHVD73WG";
 const unsigned long tempRangeChannelId = 639828;
-float maximaScale = 0.00000084f;
+float maximaScale = 0.000000832f;
 const unsigned long sendAutoRangeInterval= 18000000;
 const char separator = 'p';
 const int8_t NumberOfConnectionAttempts = 1;
@@ -79,7 +79,7 @@ void initAutoRange(){
 
   _max[0]=absoluteMaxTemp;
   _min[0] =absoluteMinTemp;
-  
+  maxPressure[0] = 995; //// temporary fix!!!
   sendAutoRangeTime =millis(); 
 }
 //int getMonth(int8_t numOfAttempts){

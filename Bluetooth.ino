@@ -135,6 +135,12 @@ void readBluetoothCommands() {
         case 16:
           autoRangeEnabled = boolean(Serial.read());
           break;
+        case 17:
+           executeOTA();
+           break;
+        case 18:
+           ESP.restart();  
+           break;
         }
       
         Serial.flush();
