@@ -1,11 +1,11 @@
-#include <DHT.h> 
 #include <ESP8266WiFi.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <SoftwareSerial.h>
 #include <Adafruit_BMP280.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+//#include <Adafruit_SSD1306.h>
+#include <Adafruit_SH1106.h>
 #include "Wire.h"
 #include "Time.h"
 #include <TimeLib.h>
@@ -14,44 +14,89 @@
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <ArduinoOTA.h>
 #include <ESP8266mDNS.h>
+#include <math.h> 
+
+
+#include <Arduino.h>
+#include "Adafruit_SHT31.h"
+Adafruit_SHT31 sht31 = Adafruit_SHT31();
 
 #define OLED_RESET 4
 #define BUTTON_PIN 12
 #define RED_PIN 13
 #define GREEN_PIN 16
 #define BLUE_PIN 15
-#define DHTPIN 14
+//#define DHTPIN 14
+#define SOFT_SERIAL_RX 5
+#define SOFT_SERIAL_TX 4
+#define BT_SERIAL_RX 10
+#define BT_SERIAL_TX 9
 
 #define DEBUG false
-#define SERIAL_TIMEOUT 3000
+#define SERIAL_TIMEOUT 3500
 #define SENDING_TIMEOUT 1100
 #define SYNC_TIME_INTERVAL 86400000
 #define DISPLAY_BRIGHTNESS_INTERVAL 800
-
-
-Adafruit_SSD1306 display(OLED_RESET);
-SoftwareSerial mySerial(5, 4);
-SoftwareSerial btSerial(10, 9);
+#define PRESSURE_READ_INTERVAL 50
+#define MAX_ACCEPTABLE_PRESSURE_CHANGE 10
+#define SHT_READ_INTERVAL 30
+#define PRESSURE_FIX -8.25f
+#define RAIN_COEF 0.329
+#define WIFI_CONNECTION_TIMEOUT 30000
+//Adafruit_SSD1306 display(OLED_RESET);
+Adafruit_SH1106 display(OLED_RESET);
+SoftwareSerial mySerial(SOFT_SERIAL_RX, SOFT_SERIAL_TX);
+SoftwareSerial btSerial(BT_SERIAL_RX, BT_SERIAL_TX);
 Adafruit_BMP280 bmp;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP,"tempus1.gum.gov.pl");
 WiFiClient client;
-DHT dht(DHTPIN, DHT22,11);
-   
+
+
+const char *ssid3 =  "OnePlus 7Pro"; 
+const char *pass3 =  "W112Qzcx98";
+
+const char *ssid2 =  "FunBox-72D6"; 
+const char *pass2 =  "FF6EAD542DCE77FD357F2F6AC9";
+
+const char* server = "api.thingspeak.com";
+
+//const char *ssid3=  "AndroidAP";
+//const char *pass3 =  "jyok8169";
 const char *ssid =  "WLAN-7F8H56"; 
 const char *pass =  "ifDii1BFF3Dfh0d";
-const char* server = "api.thingspeak.com";
-//const char *ssid =  "AndroidAP";
-//const char *pass =  "jyok8169";
+
+
+float shtCurrentHum =0;
+float shtCurrentTemp =0;
+float lastShtCurrentHum =0;
+float lastShtCurrentTemp =0;   
+float shtIIRFilterCoef = 0.91f;
+
+//const char *ssid3 ="AP-Media_6860";
+//const char *pass3 ="cekincekin";
 boolean enableKnob = false; //////
 boolean realTimeWind = false;
 boolean turnOffLed = false;
-boolean recieveDataFormInternet = false;
+//boolean recieveDataFormInternet = false;
 boolean autoTempRangeMode = true;
+boolean pressureChangeEnabled = false;
+boolean debugPressureChange = false; 
+boolean networkOnlyMode = false;
+boolean resetWiFiConnection = false;
+boolean lightLock = false;
+
+unsigned long pressureReadTime;
+float pressureSamples;
+float currentPressure =0;
+float lastPressure;
+float pressureChange =0;
+float maxPressureChange[] = {49.21f,49.21f};
+float minPressureChange[] = {0,0};
+float interpolatedAverangeWind =0;
 
 long sendInterval = 180000;
 int dhtInterval = 3000;
-int homeDhtInterval = 3000;
 int windInterval  = 492;
 unsigned long dayTimeInterval = 60000;
 int analogReadInterval = 300;
@@ -64,6 +109,7 @@ int8_t startDimHour = 22;
 int8_t startDimMinute = 22;
 int8_t stopDimHour = 9;
 int8_t stopDimMinute = 40;
+int fluidDimming = 30;
 
 boolean clockColorMode = false;
 int8_t colorMode = 1;
@@ -71,6 +117,7 @@ int8_t colorModesRGB[2][3] = {{1,4,3},{2,3,1}};
 int8_t colorModesHSV[2] = {0,6};
 int monthMax[] = {73,97,157,233,270,300,337,340,293,203,133,87};
 int monthMin[] = {-216,-213,-179,-60,6,68,94,90,38,-44,-181,-225}; 
+boolean rangeMode[9];
 
 float maxAverangeWind[]= {8,8};
 float maxWind[] = {20,20}; 
@@ -78,16 +125,17 @@ float maxInsideTemp[] = {28,28};
 float minInsideTemp[] = {19,19};
 float maxInsideHum[] = {75,75};
 float minInsideHum[] = {34,34};
-int8_t maxOutsideHum[] = {100,100};
-int8_t minOutsideHum[] = {10,10};
-int8_t maxRain[] = {8,9};
+float maxOutsideHum[] = {100,100};
+float minOutsideHum[] = {10,10};
+float maxRain[] = {8,9};
 float maxPressure[] = {990,990};
-float minPressure[] = {969.969};
+float minPressure[] = {969,969};
 boolean autoRangeEnabled = true;
 
 int r;
 int g;
 int b;
+int hsv_h_ext = 21;
 
 float tempO =0;
 byte humO = 0;
@@ -105,6 +153,8 @@ float pres = 0;
 int samples = 0;
 
 int rain =0;
+float rainSum =0;
+int lastHour =0;
 
 float _max[] = {35,35};
 float _min[] = {-20,-20};
@@ -123,31 +173,19 @@ boolean buttonState = false;
 boolean startReading = false;
 int8_t menuCounter = 0;
 boolean lock = false;
-boolean dataNotReceived = false;
+//boolean dataNotReceived = false;
+boolean signalReceived = false;
+long timeoutInterval = SENDING_TIMEOUT;
+unsigned long createdAtTime = 0;
+
+
 boolean dataError = false;
 float presSum =0;
 float tempSum =0;
 float humSum =0;
 
-float dailyPressureSum;;
-float dailyInsideTemperatureSum;
-float dailyInsideHumiditySum;
-float dailyOutsideHumiditySum;
-float dailyOutsideTemperatureSum;
-float dailyWindSum;
-float dailyAverangeWindSum;
-int   dailyRain;
-
-float dailyPressureMaxima[] = {2000,0};
-float dailyInsideTemperatureMaxima[] = {100,0};
-float dailyInsideHumidityMaxima[] = {100,0};
-float dailyOutsideHumidityMaxima[] = {100,0};
-float dailyOutsideTemperatureMaxima[] = {100,0};
-float dailyWindMaxima[] = {300,0};
-float dailyAverangeWindMaxima[] = {300,0};
-float dailySamples = 0;
-
 unsigned long dhtTime;
+unsigned long sthTime;
 unsigned long sendTime;
 unsigned long displayTime;
 unsigned long syncTime;
@@ -159,20 +197,36 @@ unsigned long rgbTime;
 unsigned long clockUpdateTime;
 unsigned long analogReadTime;
 unsigned long displayBrightnesTime;
+unsigned long resetWiFiTime = 7200000;
 float wp = 0;
 int lastR = 0;
 int lastB = 0;
 int lastG =0;
 float windColor = 0;
-boolean backupSendLock = false;
-boolean dailyMaximaSent = false; 
+
 int analogValue = 0;
 int lastAnalogValue = 0;
 boolean displayHeartBeatEnabled = false;
+boolean transmitCurrentPressure = false;
+//Flash real id:   001640EF
+//Flash real size: 4194304 bytes
+//Flash ide  size: 4194304 bytes
+//Flash ide speed: 40000000 Hz
+//Flash ide mode:  QIO
+boolean displayEnabled = true;
+void displayA(){
+  if(displayEnabled){
+  display.display();
+  }
+}
 void setup() 
 {
   Serial.begin(115200);
   mySerial.begin(38400);
+
+ // Serial.println(String(LED_BUILTIN));
+
+
   
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
@@ -182,88 +236,99 @@ void setup()
   analogWrite(RED_PIN,1023); 
   analogWrite(GREEN_PIN,1023); 
   analogWrite(BLUE_PIN,1023); 
-  
-  dht.begin();
+
+
   Wire.begin(2,0);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  
-  display.display(); 
+  display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+  displayA(); 
   clearDisplay();
-  display.display();     
-  display.setTextSize(1);
+  displayA();     
+  display.setTextSize(1.5);
   display.setTextColor(WHITE);
+
    
   while(!bmp.begin()){
-    clearDisplay();
     display.println(F("Pressure sensor error"));
-    display.display();
-    delay(1);
+    displayA();
+    delay(100);
+  }
+ bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,    
+ Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+ Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+ Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+ Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
+
+  if (!sht31.begin(0x44)) {   
+    display.println("SHT31 error");
+    displayA();
   }
 
- loadSettings();
+  loadSettings();
 
- display.println(F("Trasmitter connecting"));
- display.println(F("WiFi connecting"));
- display.display();
- mySerial.flush();
- mySerial.write((byte)9);
- mySerial.write(lowByte(sendInterval/200));
- mySerial.write(highByte(sendInterval/200));
- mySerial.write(lowByte(dhtInterval/2));
- mySerial.write(highByte(dhtInterval/2));
- mySerial.write(lowByte(windInterval/2));
- mySerial.write(highByte(windInterval/2));
- mySerial.write((byte)realTimeWind);
- boolean response = checkResponse(true);
-  clearDisplay();
-  if(response){
-    display.println(F("Trasmitter connected"));
+
+// if(lightLock){
+ /// display.testDim(0);
+// }
+lightLock =false;
+
+
+
+
+  display.print(F("RF connecting"));
+  if(initTrasmitter()){
+    display.println(F(" OK"));
+    networkOnlyMode = false;
   }else{
-    display.println(F("Trasmitter error"));
-    delay(2500);
+    display.println(F(" ERR"));
+ //   display.println(F("WiFi Only Mode"));
+       networkOnlyMode = true;
   }
-  display.println(F("WiFi connecting"));
-  display.display();
-  mySerial.flush();
-  mySerial.write((byte)1);
-
- // display.println(F("WiFi connecting"));
- // display.println(ssid);
+  displayA();
+ 
+  display.print(F("WiFi connecting"));
+ 
   WiFi.mode(WIFI_STA);
   ThingSpeak.begin(client);
-  WiFi.begin(ssid, pass);
-  while (WiFi.status() != WL_CONNECTED) 
-  {
-    delay(200);
-    displayDot();
-  }
-  initOTA();
-  clearDisplay();
-  if(response){
-    display.println(F("Trasmitter connected"));
-  }else{
-    display.println(F("Trasmitter error"));
-  }
-  display.println(F("WiFi connected"));
-  display.println(F("Getting maxima"));
-  display.display();
-  
-  sendError("RECEIVER RESET");
-  displayDot();
-  
-  timeClient.begin();
-  timeClient.setTimeOffset(7200);   
-  getDateTime();
-  
-  if(autoTempRangeMode){
-     displayDot();
+  connectToWiFi(); 
+
+  if(WiFi.status() == WL_CONNECTED){
+    display.print(F(" OK"));
+    display.println();
+    display.print(F("Time Synh"));
+    displayA();
+    
+    initOTA();
+    timeClient.begin();
+    timeClient.setTimeOffset(7200);   
+    getDateTime();
+    display.print(F(" OK"));
+    display.println();
+    
+    display.print(F("Sending status"));
+    sendError("RECEIVER RESET");
+    displayA();
+    display.print(F(" OK"));
+    display.println();
+     
+    display.println(F("Loading Auto Range"));
+    displayA();
+
+    if(autoTempRangeMode){
      initAutoRange();
-  }else{
+    }else{
       setMaxMin();
       delay(700);
+    }
+  
+  }else{
+    display.print(F(" ERR"));
+     display.println(F("Offline Mode"));
+    displayA();
   }
 
+
+
   clearDisplay();
- // display.println(F("       Today is "));
   display.print(_year);
    display.print(F("-"));
   if(_month < 10){
@@ -302,7 +367,7 @@ void setup()
       display.print(_min[0]/10.0f,1);
   }
   display.print(F(" C"));
-  display.display();
+  displayA();
   delay(2700);
   
   turnOffLedAtSpecyficTime(); 
@@ -310,59 +375,175 @@ void setup()
   analogValue = map(analogRead(A0),3,879,0,200); 
   lastAnalogValue = analogValue;
   brightness = 1 -(analogValue/200.0f);
-  
-  tempSum= dht.readTemperature();
-  humSum= dht.readHumidity();
-  presSum = bmp.readPressure()/100.0f;
+     
+//  tempSum= dht.readTemperature();
+//  humSum= dht.readHumidity();
+  tempSum = sht31.readTemperature();   
+   humSum = sht31.readHumidity(); 
+  presSum = bmp.readPressure();
+  lastPressure = presSum;
   samples++;
-    
+  
+  int tmp = fluidDimming;
+  fluidDimming = 0;
+  turnOffLedAtSpecyficTime();
+  fluidDimming = tmp;
+  
+  
   displayBrightnesTime =millis();
   analogReadTime =millis();
+  pressureReadTime = millis();
   syncTime = millis();
   clockUpdateTime = millis();
   dhtTime = millis();
   sendTime = millis()+sendInterval-500;
+  sendTime = millis();
   displayTime = millis();
   rgbTime = millis();
+  
+  if(networkOnlyMode){
+      sendTime= (-1)*sendInterval;
+  }
+  
 }
-void displayDot(){
- display.print(F("."));
- display.display();
+
+boolean initTrasmitter(){
+ boolean result = false;
+ int attempts = 0;
+ unsigned long t2 =millis();
+ while(attempts <=4){ 
+ mySerial.flush();
+ mySerial.write((byte)9);
+ mySerial.write(lowByte(sendInterval/200));
+ mySerial.write(highByte(sendInterval/200));
+ mySerial.write(lowByte(dhtInterval/2));
+ mySerial.write(highByte(dhtInterval/2));
+ mySerial.write(lowByte(windInterval/2));
+ mySerial.write(highByte(windInterval/2));
+ mySerial.write((byte)realTimeWind);
+/// boolean response = checkResponse(true);
+ unsigned long t = millis();
+  while(millis() < t+ SERIAL_TIMEOUT/4){
+    if(mySerial.available()){
+      if(mySerial.read() == 1){
+        result =true;
+        break;
+      }   
+    }
+    drawLoadingBar(map(millis() - t2,0,SERIAL_TIMEOUT,0,128),false);            
+    delay(1);
+  }
+  if(result){
+    break;
+  }
+  attempts++;
+ }
+  mySerial.flush();
+  mySerial.write((byte)1);
+  clearLoadingBar();
+  return result;
 }
-void loop() 
-{
-  if (mySerial.available()||dataNotReceived) {
-    if (getData()||dataNotReceived) {
-      if(clockColorMode){
-        display.setCursor(120,25);
-        display.print("s");
-        display.display();
-      }
+
+void displayWiFiConnecting(){
+  unsigned long ti = millis();
+  while (WiFi.status() != WL_CONNECTED&&millis() < ti+WIFI_CONNECTION_TIMEOUT) 
+  {
+    delay(20);
+    drawLoadingBar(map(millis() - ti,0,WIFI_CONNECTION_TIMEOUT,0,128),false);
+  }
+  clearLoadingBar();
+}
+
+void connectToWiFi(){
+  if(handleWiFiConnect()) return; 
+  int8_t numberOfNetworks = WiFi.scanNetworks();
+  for(int8_t i =0; i<numberOfNetworks; i++){
+      if(handleWiFiConnect(i,ssid, pass)) return;
+      if(handleWiFiConnect(i,ssid2, pass2)) return;
+      if(handleWiFiConnect(i,ssid3, pass3)) return;
+  }
+}
+boolean handleWiFiConnect(int8_t index,const char *ssid,const char  *pass){
+  if(!WiFi.SSID(index).equals(ssid)) return false;
+  WiFi.begin(ssid, pass);
+  displayWiFiConnecting();
+  if(WiFi.status() != WL_CONNECTED){
+    return false;
+  }
+  return true;
+}
+
+//boolean handleWiFiConnect(const char *ssid,const char  *pass){
+//  clearDisplay();
+//  display.println(F("WiFi connectiong to:"));
+//  display.println(ssid);
+//  displayA();
+//  WiFi.begin(ssid, pass);
+//  displayWiFiConnecting();
+//  if(WiFi.status() != WL_CONNECTED){
+//    return false;
+//  }
+//  return true;
+//}
+//boolean handleWiFiConnect(const char *ssid,const char  *pass){
+//  clearDisplay();
+//  display.println(F("WiFi connectiong to:"));
+//  display.println(ssid);
+//  displayA();
+//  WiFi.begin(ssid, pass);
+//  displayWiFiConnecting();
+//  if(WiFi.status() != WL_CONNECTED){
+//    return false;
+//  }
+//  return true;
+//}
+boolean handleWiFiConnect(){
+  WiFi.begin();
+  displayWiFiConnecting();
+  if(WiFi.status() != WL_CONNECTED){
+    return false;
+  }
+  return true;
+}
+void caclulateInsideMeasurements(){
      if(samples == 0){
       samples = 1;
      }
+     if(pressureSamples ==0){
+      pressureSamples =1;
+     }
+     temp = round((tempSum*100.0f)/samples)/100.0f;
+     hum = round((humSum*100.0f)/samples)/100.0f;
+     pres = round(presSum/pressureSamples)/100.0f;
+
+     calcRainSum();
      
-     temp = tempSum/samples;
-     hum = humSum/samples;
-     pres = presSum/samples;
-     sendData();
-       
-     if(!dataNotReceived){
-      displayWeatherData();
+    tempSum = 0;
+    humSum =0;
+    presSum = 0;
+    samples =0;
+    pressureSamples = 0;
+}
+void update(unsigned long createdAtTime =0){
+   if (getData()) {
+      if(realTimeWind){
+          caclulateInsideMeasurements();
+      }
+     sendData(createdAtTime,false);
+     createdAtTime=0; 
+     if(signalReceived){
+      interpolatedAverangeWind = interpolatedAverangeWind*0.9f + averangeWind*0.1f;
+      displayWeatherData(true);   
      }else if(!clockColorMode&&!displayWeatherData){
-      clearDisplay();
+       clearDisplay();
        display.println("Home:    " + String(temp,1) +"C  " +String(hum,1)+"%");
        display.println(F("Outside: ---C   ---%"));
        display.println(String(pres,1) + "hPa --mm   --kmh");   
-       display.display();
+       displayA();
      }
-    
-    
+     
     if(millis() > syncTime + SYNC_TIME_INTERVAL){
       getDateTime();
-      if(!autoTempRangeMode){
-        setMaxMin();
-      }
       syncTime = millis();
     }
     updateTime();
@@ -370,23 +551,16 @@ void loop()
     calculateDailyMaxima();
     sendDailyMaximaTimeCheck();
     calculateAutoRange(_month);
-    sendAutoRangeToServer(1);
-    tempSum = 0;
-    humSum =0;
-    presSum = 0;
-    samples =0;
-    maxCurrentWind= 0;
+    sendAutoRangeToServer(1,false);
+   // maxCurrentWind= 0;
     colorChangeInterval = 980;
-    colorChangeIntervalResolution = 35;
-    backupSendLock = false;
-    dataNotReceived = false; 
-    sendTime = millis();  
+    colorChangeIntervalResolution = 35; 
     } else {
      display.fillRect(87,16,40,20,BLACK);   
      display.setCursor(97,16);
      display.println(String(currentWind)+"kmh");
-     display.fillRect(0,30,map(millis() - sendTime,0,sendInterval,0,128),3,WHITE);   
-     display.display(); 
+  //   display.fillRect(0,60,map(millis() - sendTime,0,sendInterval,0,128),3,WHITE);   
+     displayA(); 
 
      if(windColor >0){
       windColor-=windColor/19.0f;
@@ -411,77 +585,240 @@ void loop()
         setLedColor(colorMode);
         wp = 0;   
     }
-  
-  }else if(!backupSendLock&&millis() > sendTime +sendInterval + SENDING_TIMEOUT){
-   mySerial.write((byte)1);
-    //mySerial.read();
-    backupSendLock = true;  
-  }else if(backupSendLock&&millis() > sendTime +sendInterval + SENDING_TIMEOUT*2){
-    dataNotReceived = true;
+}
+void rfCommunication(){
+    if (mySerial.available()) {
+      signalReceived = true;
+      if(!realTimeWind){
+      caclulateInsideMeasurements();
+      }
+   //   if(signalReceived){
+        update();
+   //   }else{
+   //      update(createdAtTime);
+   //   }
+      sendTime = millis(); 
   }
 
+  if(millis() > sendTime +sendInterval + timeoutInterval){
+    if(timeoutInterval==SENDING_TIMEOUT){
+       createdAtTime =updateTime();
+       caclulateInsideMeasurements();
+    }else if(timeoutInterval >= sendInterval/2){
+       update(createdAtTime);
+       timeoutInterval=0;
+    }
+    mySerial.write((byte)1);
+    timeoutInterval+=SENDING_TIMEOUT;
+    signalReceived = false;
+  }
+}
 
+void loop() 
+{
+
+  if(networkOnlyMode){
+    if(millis() > sendTime +sendInterval){
+      signalReceived = true;
+      caclulateInsideMeasurements();
+      update(); 
+      sendTime = millis();
+    }
+  }else{
+    rfCommunication();
+  }
+
+ 
 if(millis() > displayBrightnesTime + DISPLAY_BRIGHTNESS_INTERVAL){
  if(displayHeartBeatEnabled){  
      displayHeartBeat();
  }else if(clockColorMode){  
   displayClock(); 
  }else if(!realTimeWind&&millis() > displayTime +sendInterval/128){
-    display.fillRect(0,30,map(millis() - sendTime,0,sendInterval,0,128),3,WHITE);
-    display.display();
+//}else if(!realTimeWind&&millis() > displayTime +50){
+    displayWeatherData(false);
+    drawLoadingBar(map(millis() - sendTime,0,sendInterval,0,128),true);
+    
+ //   display.drawLine(0,58,map(millis() - sendTime,0,sendInterval,0,128),58,WHITE);
+ //   display.fillCircle(map(millis() - sendTime,58,sendInterval,0,128),1,2,WHITE);
+ 
+    //display.fillRect(0,60,map(millis() - sendTime,0,sendInterval,0,128),3,WHITE);
+
     displayTime = millis();
  }
+   // displayWeatherData(true);
  if(analogReadInterval == 1){
    analogReadInterval =300;
-    displayWeatherData();
+    displayWeatherData(true);
  }
 }
-
-
   knobController();
   // buttonControler();
-  homeSensorsRead();  
-  
-  if(millis() > rgbTime + colorChangeInterval/colorChangeIntervalResolution&&wp <=1){   
+  //dhtRead();  
+  shtRead();
+  sendSavedData();
+  readPressure();
+  detectPressureChange(currentPressure);
+  updateFluidDimming();
+  updateWeatherSegments();
+  if(millis() > rgbTime + colorChangeInterval/colorChangeIntervalResolution&&wp <1.0f){   
+
     ledAnalogWrite();  
+    
      wp+=0.1f;
     rgbTime =millis();
   }
+  
 #ifdef DEBUG
  readBluetoothCommands();
 #endif
 
 }
-void homeSensorsRead(){
-    if(millis() > dhtTime+ homeDhtInterval&&!startReading){  
-      dht.resetData();
-      digitalWrite(DHTPIN, HIGH);
-      startReading = true;
-      dhtTime = millis();
-      pinTime = millis();
+void readPressure(){
+  if(millis() > pressureReadTime + PRESSURE_READ_INTERVAL ){
+    currentPressure = bmp.readPressure();
+    if(currentPressure > 94500.0f && currentPressure < 106500.0f&&!isnan(currentPressure)){
+       presSum+=currentPressure;
+       pressureSamples++;
+    }
+    pressureReadTime = millis();
+    if(transmitCurrentPressure){
+      Serial.println(currentPressure);
+    }
   }
-    if(startReading){
-      if(millis() - pinTime > 250){
-        pinMode(DHTPIN, OUTPUT);
-        digitalWrite(DHTPIN, LOW);
-        delay(20);
-        if(dht.fastRead()){
-        float p =bmp.readPressure()/100.0f;
-        if(p>0){              
-        float t = dht.getTemperature();
-        float h = dht.getHumidity(); 
-        if(t >13){               
-            presSum+= p;
+}
+
+//void dhtRead(){
+   //   customDHTRead();
+//  if(clockColorMode||displayHeartBeatEnabled||realTimeWind||pressureChangeEnabled||startReading){
+//    customDHTRead();
+//  }else if(!startReading){
+//    float t = dht.readTemperature();
+//    float h = dht.readHumidity();
+//    if(t >10&&t<50&&!isnan(t)&&!isnan(h)&&h<=100&&h>=1){  
+//      tempSum+=t;
+//      humSum+=h;
+//      samples++;  
+//    }
+//  }
+//}
+  ////////////////////////////////////////DEBUG !!!!!!!!!!!/////////////////////////////////////
+//float testDiff = 0;
+//double testDiffSum =0;
+//double testCtn =0;
+//float maxTestDiff = 0;
+//float minTestDiff = 1200.0f;
+  ////////////////////////////////////////DEBUG !!!!!!!!!!!/////////////////////////////////////
+  float shtMax = 0.0f;
+  float shtMin = 50.0f;
+  unsigned long shtTimeTest  =0;
+  float lastSht =0.0f;
+  int ctnQ =0;
+  float ctnQ2 = 0;
+  float defSum = 0.0f;
+  //maxDif 0.08
+  int diff1 = 0;
+void shtRead(){
+  if(millis() > sthTime+ SHT_READ_INTERVAL){
+        float t = sht31.readTemperature();
+        float h = sht31.readHumidity(); 
+        if(t >13&&t < 50&&h>=0&&h<=100&&!isnan(t)&&!isnan(h)){  
             tempSum+=t;
             humSum+=h;
             samples++;  
-        }   
-          }
+     //                    diff1 =abs((t - lastSht)*10000.0f);
+            shtColorRealTimeUpdate(t,h);
+      //      float a = abs((t - lastSht)*10000.0f)/10.0f;
+
+//            defSum+=a;
+//            ctnQ2++;
+//            if(ctnQ >2&&a >shtMax){
+//              shtMax = a;
+//            }
+//              if(ctnQ >2&&a <shtMin){
+//              shtMin= a;
+//            }
+            lastSht = t;
         }
-        startReading = false;      
-      }
-    }
+     sthTime = millis();  
+  }   
+//  if(millis()  > shtTimeTest + 1500){
+//    Serial.println(shtIIRFilterCoef);
+//     Serial.println(diff1);
+//     Serial.println(maxInsideTemp[0]);
+//     Serial.println(minInsideTemp[0]);
+//       Serial.println(maxInsideHum[0]);
+//     Serial.println(minInsideHum[0]);
+//   // Serial.println(shtMax);
+// //     Serial.println(shtMin);
+////    Serial.println(defSum/ctnQ2);
+////   ctnQ2 =0;
+////    defSum = 0;
+// //   ctnQ++;
+//    shtTimeTest =millis();
+//  }
 }
+
+void shtColorRealTimeUpdate(float t, float h){
+
+//  if(diff1 <=800){
+//   
+//  shtIIRFilterCoef = map(diff1,0,800,9999,7800)/10000.0f;
+//}
+ // if(t <maxInsideTemp[0]&& t > minInsideTemp[0]){
+
+     shtCurrentTemp = lastShtCurrentTemp*shtIIRFilterCoef + t*(1.0f -shtIIRFilterCoef);
+//  }
+//  if( h < maxInsideHum[0]&& h > minInsideHum[0]){
+       shtCurrentHum =lastShtCurrentHum*shtIIRFilterCoef + h*(1.0f -shtIIRFilterCoef);
+  // }
+   
+    lastShtCurrentHum = shtCurrentHum;
+    lastShtCurrentTemp =shtCurrentTemp; 
+    if(!pressureChangeEnabled){
+    setLedColor(colorMode);
+    }
+      yield();
+}
+//void customDHTRead(){
+//  if(millis() > dhtTime+ 3000&&!startReading){  
+//      dht.resetData();
+//      digitalWrite(DHTPIN, HIGH);
+//      startReading = true;
+//      dhtTime = millis();
+//      pinTime = millis();
+//  }
+//    if(startReading){
+//      if(millis() - pinTime > 250){
+//        pinMode(DHTPIN, OUTPUT);
+//        digitalWrite(DHTPIN, LOW);
+//        delay(20);
+//        if(dht.fastRead()){         
+//        float t = dht.getTemperature();
+//        float h = dht.getHumidity(); 
+//        if(t >13&&t < 50&&h>=0&&h<=100&&!isnan(t)&&!isnan(h)){  
+//          tempDiffSum+=tmpTempSth-t;
+//          tempDiffSamples++;
+//        }
+//////          ////////////////////////////////////////DEBUG !!!!!!!!!!!/////////////////////////////////////
+//////            testDiff = bmp.readTemperature() - t;    
+//////            testDiffSum+=abs(testDiff);
+//////            testCtn++;
+//////            if(testDiff > maxTestDiff){
+//////               maxTestDiff = testDiff;    
+//////            }else if(testDiff < minTestDiff){
+//////               minTestDiff = testDiff;
+//////            }
+//////          ////////////////////////////////////////DEBUG !!!!!!!!!!!/////////////////////////////////////
+////            tempSum+=t;
+////            humSum+=h;
+////            samples++;  
+////        }   
+//        }
+//        startReading = false;      
+//      }
+//    }
+//}
 void knobController(){
    if(millis() > analogReadTime + analogReadInterval&&enableKnob){
     analogValue = map(analogRead(A0),4,879,0,200);     
@@ -499,169 +836,10 @@ void knobController(){
   }
 
 }
-void updateTime(){
-    unsigned long offset = (millis() - timeOffset)/1000;
-   _minute = minute(epochTime+offset);
-   _hour = hour(epochTime+offset);
-   _second = second(epochTime+offset);
-  if(isDST){
-   _hour-=1; 
-  }
-}
-void getDateTime(){
-  timeClient.update();
-  ntpTest();  
-  epochTime = timeClient.getEpochTime();
-  timeOffset = millis();
-  _year = year(timeClient.getEpochTime());
-  _month = month(timeClient.getEpochTime());
-  _day = day(timeClient.getEpochTime());
-  
-  _minute = minute(timeClient.getEpochTime());
-  _hour = hour(timeClient.getEpochTime()) -1; 
-  _second = second(timeClient.getEpochTime());
-  isDST = checkDST();
-  if(isDST){
-   _hour-=1; 
-  }
-}
-
-
-boolean checkDST(){
-  int previousSunday = _day - (((epochTime / 86400) + 4) % 7);
-  if(_month < 3 || _month > 11){
-    return false;
-  }else if(_month > 3 && _month < 11){
-    return true;
-  }else if(_month == 3){
-    if(previousSunday >=8){
-      return true;
-    }else{
-      return false;
-    }
-  }
-  if(previousSunday <=0){
-     return true;
-  }else{
-      return false;
- }
-}
-void turnOffLedAtSpecyficTime(){
-   if(_hour >= startDimHour){
-    if(_minute >=startDimMinute&&!turnOffLed){
-      display.testDim(0);
-      lastBrightness = brightness;
-      brightness =0;
-      turnOffLed = true;
-    }     
-   }else if(_hour >= stopDimHour){
-      if(_minute >=stopDimMinute&&turnOffLed){
-         display.testDim(255);
-          brightness = lastBrightness;
-          turnOffLed = false;
-     }   
-   }
-}
-
-void sendDailyMaximaTimeCheck(){
-  if(_hour == 0){
-    if(!dailyMaximaSent){
-      sendDailyMaxima();
-      dailyMaximaSent = true;
-    }
-  }else{
-    dailyMaximaSent = false;
-  }
-}
-void calculateDailyMaxima(){
- dailySamples++;  
- dailyPressureSum+=pres;
- dailyInsideTemperatureSum+=temp;
- dailyInsideHumiditySum+=hum;
- dailyOutsideHumiditySum+=humO;
- dailyOutsideTemperatureSum+=tempO;
- dailyWindSum+=maxCurrentWind;
- dailyAverangeWindSum+=averangeWind;
- dailyRain+=rain;
- if(pres < dailyPressureMaxima[0]){
-  dailyPressureMaxima[0] = pres;
- }else if(pres > dailyPressureMaxima[1]){
-  dailyPressureMaxima[1] = pres;
- }
- if(temp < dailyInsideTemperatureMaxima[0]){
-  dailyInsideTemperatureMaxima[0] = temp;
- }else if(temp > dailyInsideTemperatureMaxima[1]){
-   dailyInsideTemperatureMaxima[1] = temp;
- }
- if(hum < dailyInsideHumidityMaxima[0]){
-  dailyInsideHumidityMaxima[0] = hum;
- }else if(hum > dailyInsideHumidityMaxima[1]){
-  dailyInsideHumidityMaxima[1] = hum;
- }
- if(humO < dailyOutsideHumidityMaxima[0]){
-  dailyOutsideHumidityMaxima[0] = humO;
- }else if(humO > dailyOutsideHumidityMaxima[1]){
-  dailyOutsideHumidityMaxima[1] = humO;
- }
- if(tempO < dailyOutsideTemperatureMaxima[0]){
-  dailyOutsideTemperatureMaxima[0] = tempO;
- }else if(tempO > dailyOutsideTemperatureMaxima[1]){
-   dailyOutsideTemperatureMaxima[1] = tempO;
- }
- if(maxCurrentWind < dailyWindMaxima[0]){
-  dailyWindMaxima[0] = maxCurrentWind;
- }else if(maxCurrentWind > dailyWindMaxima[1]){
-   dailyWindMaxima[1] = maxCurrentWind;
- }
- if(averangeWind < dailyAverangeWindMaxima[0]){
-   dailyAverangeWindMaxima[0] = averangeWind;
- }else if(averangeWind > dailyAverangeWindMaxima[1]){
-   dailyAverangeWindMaxima[1] = averangeWind;
- }
-}
-
- void ntpTest(){
-  if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
-   timeClient.update();
-   delay(1500);
-   }else{
-    return;
-   }
-   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
-     NTPClient timeClient(ntpUDP,"tempus2.gum.gov.pl");
-     timeClient.update();
-     delay(700);
-   }
-   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
-     NTPClient timeClient(ntpUDP,"ntp1.tp.pl");
-     timeClient.update();
-     delay(700);
-   }
-   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
-     NTPClient timeClient(ntpUDP,"ntp1.tp.pl");
-     timeClient.update();
-     delay(700);
-   }
-   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
-     NTPClient timeClient(ntpUDP,"ntp.itl.waw.pl");
-     timeClient.update();
-     delay(700);
-   }
-   if(year(timeClient.getEpochTime()) < 2019||year(timeClient.getEpochTime()) ==2019&&month(timeClient.getEpochTime()) ==0){
-      clearDisplay();
-      display.println("NTP error");
-      display.display();
-      delay(3500);
-    }
-}
 
 void clearDisplay(){
   display.clearDisplay();
   display.setCursor(0,0);
-}
-void setMaxMin(){
-  _max[0] = (monthMax[_month-1]*map(_day,1,_month%2?31:30,0,100)+monthMax[_month==1?12:_month-2]*map(_day,1,_month%2?31:30,100,0))/100;
-  _min[0] = (monthMin[_month-1]*map(_day,1,_month%2?31:30,100,0)+monthMin[_month==12?0:_month]*map(_day,1,_month%2?31:30,0,100))/100; 
 }
 
 void displayClock(){
@@ -688,7 +866,7 @@ void displayClock(){
       display.print(F("0"));
      }
      display.print(_second);
-     display.display();
+     displayA();
      display.setFont();
 
      lastR = r;
@@ -699,16 +877,27 @@ void displayClock(){
   }
 }
 void ledAnalogWrite(){
+   if(!lightLock){
     analogWrite(BLUE_PIN,1023 -((1-wp)*lastB + wp*b)*brightness);
     analogWrite(GREEN_PIN,1023 -((1-wp)*lastG + wp*g)*brightness);
     analogWrite(RED_PIN,1023 -((1-wp)*lastR + wp*r)*brightness);
+   }
 }
-void displayWeatherData(){
-  if(!clockColorMode&&!displayHeartBeatEnabled){
-    clearDisplay();
-     display.println("Home:    " + String(temp,1) +"C  " +String(hum,1)+"%");
-     display.println("Outside: " + String(tempO,1) +"C  "+String(humO)+"%");
-     display.println(String(pres,1) + "hPa "+String(rain)+"mm    "+String(maxCurrentWind)+"kmh");  
-     display.display(); 
+void calcRainSum(){
+  rainSum +=rain*RAIN_COEF;
+  if(_hour != lastHour){
+    rainSum = 0.0f;
   }
+  lastHour = _hour;
 }
+//void displayWeatherData(boolean flag){
+//  if(!clockColorMode&&!displayHeartBeatEnabled){  
+//    clearDisplay();  
+//     display.println("Home:    " + String(shtCurrentTemp,1) +"C  " +String(shtCurrentHum,1)+"%");
+//     display.println("Outside: " + String(tempO,1) +"C  "+String(humO)+"%");
+//     display.println(String(pres,1) + "hPa "+String(rain)+"mm    "+String(maxCurrentWind)+"kmh");  
+//       if(flag){
+//     displayA(); 
+//       }
+//  }
+//}

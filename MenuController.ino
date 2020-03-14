@@ -21,7 +21,7 @@ void buttonControler(){
      display.println("Home:    " + String(temp,1) +"C  " +String(hum,1)+"%");
      display.println("Outside: " + String(tempO,1) +"C  "+String(humO)+"%");
      display.println(String(pres,1) + "hPa "+String(rain)+"mm    "+String(maxCurrentWind)+"kmh");      
-     display.display(); 
+     displayA(); 
      lock = false;
   }
 }
@@ -84,7 +84,7 @@ void displayColorMode(){
             display.println(getColorName(colorModesHSV[colorMode -2]));
             display.println(String(map(r,0,1023,0,100)) +"% " +String(map(g,0,1023,0,100)) +"% " +String(map(b,0,1023,0,100))+"%");
           }
-          display.display();
+          displayA();
 
 }
 void displayBrightness(){
@@ -93,7 +93,7 @@ void displayBrightness(){
   display.fillRect(0,10,map(brightness*100,0,100,0,128),3,WHITE);
   display.println();
   display.println("          " +String((int)(brightness*100))+"%");
-   display.display();
+   displayA();
   //delay(700);
 }
 

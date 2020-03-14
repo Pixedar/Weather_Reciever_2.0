@@ -1,7 +1,7 @@
 
 void loadSettings(){
     byte a,b;
-    EEPROM.begin(35);
+    EEPROM.begin(37);
     delay(12);
     a = EEPROM.read(0);
     if(a!=255){
@@ -103,6 +103,12 @@ void loadSettings(){
     if(a!=255){
       stopDimMinute =a; 
     }
+    a = EEPROM.read(27);
+    if(a !=0){
+      lightLock= true;
+    }
+    a = EEPROM.read(28);
+    networkOnlyMode =(boolean)a;
 //    a = EEPROM.read(27);
 //     if(a!=255){
 //      recieveDataFormInternet = a;
@@ -110,4 +116,5 @@ void loadSettings(){
   EEPROM.end();
     setLedColor(colorMode);
     checkRealTimeWind();
+    pressureChangeEnabled = checkPressureChange(colorMode);
 }

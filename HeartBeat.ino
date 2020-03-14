@@ -82,7 +82,7 @@ void getHearBeatParams(byte val){
   display.println(F("Color mode: dynamic"));
   display.print(F("Max heart rate: "));
   display.println(String(maxHeartRate));
-  display.display();
+  displayA();
 }
  void readHeartRate(){
   averangeHeartRate = Serial.read();
@@ -112,7 +112,7 @@ void displayHeartBeatValue(int value){
   display.clearDisplay();
   display.setCursor(52,22);
   display.print(value);
-  display.display();
+  displayA();
 }
  void readStaticColor(){
    dynamicColor = false;
@@ -123,17 +123,17 @@ void displayHeartBeatValue(int value){
   clearDisplay();
   display.println(F("Heart Beat Settings:"));
   display.println(F("Color: Static"));
-  display.display();
+  displayA();
 }
 void readStopCommand(){
   displayHeartBeatEnabled = false;
   display.setFont();
   clearDisplay();
   display.println(F("HeartBeat DISABLED"));
-  display.display();
+  displayA();
   setColor(false);
   delay(700);
-  displayWeatherData();
+  displayWeatherData(true);
   ledAnalogWrite();
 }
 void getHSVColor(){

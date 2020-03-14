@@ -1,5 +1,3 @@
-
-
 void initOTA(){
     ArduinoOTA.onStart([]() {
     String type;
@@ -8,17 +6,15 @@ void initOTA(){
     } else { // U_SPIFFS
       type = "filesystem";
     }
-
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
     clearDisplay();
     Serial.println("Start updating " + type);
    display.println("Start updating " + type);
-      display.display();
+      displayA();
   });
   ArduinoOTA.onEnd([]() {
     Serial.println("\nEnd");
     display.println(F("end"));
-       display.display();
+       displayA();
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
    Serial.printf("%u%%\r", (progress / (total / 100)));
@@ -41,7 +37,7 @@ void initOTA(){
       display.println(F("End Failed"));
       Serial.println(F("End Failed"));
     }
-     display.display();
+     displayA();
   });
   ArduinoOTA.begin();
 }
@@ -49,9 +45,9 @@ void initOTA(){
 void executeOTA(){
    clearDisplay();
    display.println("OTA ENABLED");
-   display.display();
+   displayA();
   unsigned long timePassed = millis();
-  while(millis() < timePassed + 110000l){
+  while(millis() < timePassed + 140000l){
       ArduinoOTA.handle();
       delay(200);
   }
