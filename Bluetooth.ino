@@ -41,49 +41,12 @@ void readBluetoothCommands() {
           display.print(String(mc[1]));
           displayA();
           break;
-        case 5: 
-          a =Serial.read();
-          sendInterval = a*10000; 
-          mySerial.write((byte)2);
-          mySerial.write(lowByte(sendInterval/200));
-          mySerial.write(highByte(sendInterval/200));
-         // mySerial.print(sendInterval/2);
-          if(checkResponse(false)){         
-          clearDisplay();
-          display.print(F("Sending interval: "));
-          display.print(String(sendInterval));
-          displayA(); 
-          saveByte(a ,20);
-         }       
+        case 5:        
           break;
         case 6:
-          b = Serial.read();
-          dhtInterval =b*100;
-          //mySerial.print("2;"+String(b*1000/2));
-          mySerial.write((byte)3);
-          mySerial.write(lowByte(dhtInterval/200));
-          mySerial.write(highByte(dhtInterval/200));
-          if(checkResponse(false)){
-          clearDisplay();
-          display.print(F("Oversampling: "));
-          display.print(dhtInterval);
-          displayA();
-          saveByte(b ,21);
-          }
           break;
         case 7:
-          c = Serial.read();
-          windInterval = c*50;
-          mySerial.write((byte)4);
-          mySerial.write(lowByte(windInterval/200));
-          mySerial.write(highByte(windInterval/200));
-          if(checkResponse(false)){
-          clearDisplay();
-          display.print(F("Oversampling: "));
-          display.print(b);
-          displayA();
-          saveByte(c ,22);
-          }
+          
           break;
         case 8:
           startDimHour = Serial.read();
@@ -178,23 +141,6 @@ void readBluetoothCommands() {
           break;
         case 24: // hex 18
           loadAutoRangeFromEEPROM();
-          delay(20);
-          initAutoRange();  
-          Serial.println(_month);
-          Serial.println(_day);
-          Serial.println(absoluteMaxTemp);
-          Serial.println(absoluteMinTemp);
-          Serial.println(maxInsideTemp[0]);
-          Serial.println(minInsideTemp[0]);
-          Serial.println(maxInsideHum[0]);
-          Serial.println(minInsideHum[0]);
-          Serial.println(maxPressure[0]);
-          Serial.println(minPressure[0]);
-          Serial.println(maxPressureChange[0]);
-          Serial.println(minPressureChange[0]); 
-          Serial.println(maxPressureChange[1]);
-          Serial.println(minPressureChange[1]);
-          Serial.println(F("end"));    
           break;
         case 25: // hex 19
           if(!transmitCurrentPressure){
@@ -203,8 +149,7 @@ void readBluetoothCommands() {
             transmitCurrentPressure = false;
           }
           break;
-        case 26: // hex 0x1A kalibracja diody 
-        
+        case 26: // hex 0x1A kalibracja diody     
           analogWrite(BLUE_PIN,(Serial.read()/100.0f)*1023);
           analogWrite(GREEN_PIN,(Serial.read()/100.0f)*1023);
           analogWrite(RED_PIN,(Serial.read()/100.0f)*1023);
@@ -250,12 +195,8 @@ void readBluetoothCommands() {
           Serial.println(WiFi.status());
           break;
         case 37:
-          Serial.println(WiFi.disconnect());
           break;
         case 38:
-          WiFi.mode(WIFI_STA);
-          connectToWiFi();
-     //      WiFi.connect();
           break;
         case 39:
           resetWiFiConnection = true;
@@ -263,9 +204,6 @@ void readBluetoothCommands() {
         case 40:
             ThingSpeak.begin(client);
             break;
-        case 41:
-          testClient();
-          break;
         case 42:
          lightLock = Serial.read();
           Serial.println(lightLock);
@@ -280,13 +218,27 @@ void readBluetoothCommands() {
         case 46:
           shtIIRFilterCoef  = (float)(Serial.read()/100.0f);
           break;
-
+        case 47:
+          getRfPocketRatio();
+        break;
+        case 48:
+          rf_pocketsReceivedCounter =1;
+          rf_pocketsLostCounter = 0;
+          break;
+        case 49:
+        Serial.println(maxRfTime);
+        Serial.println(minRFTime);
+        Serial.println((double)rqSum/rqSamples);
+        Serial.println(minRFTime2);
+        Serial.println((double)rqSum2/rqSamples);
+        break;
+        case 50:
+        enableProgrammingMode();
+        break;
         }
-      
         Serial.flush();
-        if (realTimeWind) {
-          mySerial.flush();
-        }
+        mySerial.flush();
+        
         t = millis();
       }
     }
@@ -300,42 +252,17 @@ void readBluetoothCommands() {
     } 
   }
 }
-
-void testClient(){
-  int conuterA = 0;
-  while(true){
-       if(WiFi.status() == WL_CONNECTED){
-        Serial.println(F("connected"));
-       }else{
-        Serial.println(WiFi.status());
-       }
-     int x = ThingSpeak.writeField(556803, 1, conuterA, "V9BDERAUY8VGWJU7");
-     Serial.println(x);
-      delay(30000);
-     long l = ThingSpeak.readLongField(556803, 1, "V9BDERAUY8VGWJU7");  
-     Serial.println(l);
-     x = ThingSpeak.getLastReadStatus();
-     Serial.println(x);
-     delay(30000);
-    conuterA++;
-   if(conuterA > 1){
-      WiFi.disconnect();
-      delay(2000);
-       if(WiFi.status() == WL_CONNECTED){
-        Serial.println(F("connected"));
-       }else{
-        Serial.println(WiFi.status());
-       }
-      WiFi.begin(ssid, pass);
-      displayWiFiConnecting();  
-    }
-    if(conuterA > 2){
-      ThingSpeak.flushClient();
-    }
-    if(conuterA > 3){
-      client.flush();
-    }
-  }
+void enableProgrammingMode(){
+  byte b[2] = {(byte)202,(byte)202};
+  mySerial.write(b,2);
+  mySerial.println(F("Programming mode"));
+  delay(60*1000);
+  mySerial.flush();
+}
+void getRfPocketRatio(){
+  Serial.println(rf_pocketsLostCounter);
+  Serial.println(rf_pocketsReceivedCounter);
+  Serial.println(((float)rf_pocketsLostCounter/(float)rf_pocketsReceivedCounter));
 }
 
 void setWIFi(){
@@ -535,25 +462,16 @@ void sendSettings(boolean state) {
   bytes[5] = minInsideHum[1];
   bytes[6] = byte(maxPressure[1] - 900);
   bytes[7] = byte(minPressure[1] - 900);
-//  bytes[8] = byte(monthMax[_month]/10);
- // bytes[9] = byte(monthMin[_month]/10);
    bytes[8] = byte((maxPressureChange[1]/maxPressureChange[0])*100);
    bytes[9] = byte((maxPressureChange[1]/minPressureChange[0])*100);
-// if(autoTempRangeMode){
-//  bytes[8] = byte(_max[1]*10);
-//  bytes[9] = byte(_min[1]*10);
-// }else{
-//  bytes[8] = byte(_max[1]/10);
-//  bytes[9] = byte(_min[1]/10);
-// }
   bytes[10] = maxOutsideHum[1];
   bytes[11] = minOutsideHum[1];
   bytes[12] = maxAverangeWind[1];
   bytes[13] = maxWind[1];
   bytes[14] = maxRain[1];
   bytes[15] = byte(sendInterval/10000);
-  bytes[16] = byte(dhtInterval/1000);
-  bytes[17] = byte(windInterval/50);
+  bytes[16] = byte(0); /// todo
+  bytes[17] = byte(0); //todo
   bytes[18] = byte(startDimHour);
   bytes[19] = byte(stopDimHour);
   bytes[20] = colorModesRGB[0][0];
@@ -575,9 +493,9 @@ void sendSettings(boolean state) {
     bytes[32] = ((hum - floor(hum))*100);
     bytes[33] = floor(pres - 900.0f);
     bytes[34] = ((pres - floor(pres))*100);
-    bytes[35] = floor(tempO);
-    bytes[36] = ((tempO - floor(tempO))*100);
-    bytes[37] = humO;
+    bytes[35] = floor(shtTempO);
+    bytes[36] = ((shtTempO- floor(shtTempO))*100);
+    bytes[37] = shtHumO;
     bytes[38] = currentWind;
     bytes[39] = floor(averangeWind);
     bytes[40] = ((averangeWind - floor(averangeWind))*100);
@@ -601,9 +519,6 @@ boolean checkResponse(boolean show){
     }
     if(show){
       if(millis() > t2+ 5){
-       // display.print(F("."));
-        //display.fillRect(0,61,map(millis() - t,0,SERIAL_TIMEOUT,0,128),3,WHITE);
-       // displayA();
            drawLoadingBar(map(millis() - t,0,SERIAL_TIMEOUT,0,128),true);
         t2 = millis();
       }     
@@ -640,63 +555,3 @@ void saveByte(byte val,int address){
    EEPROM.put(address, val);
    EEPROM.end();
 }
-//void btSendSettings(){
-//  int8_t d = 4;
-//  int8_t h = 0;
-//  byte bytes[38];
-//  bytes[0] = byte(brightness*100);
-//  bytes[1] = byte(colorMode);
-//  setLedColor(0);
-//  bytes[2] = byte(r/d);
-//  bytes[3] = byte(g/d);
-//  bytes[4] = byte(b/d);
-//  setLedColor(1);
-//  bytes[5] = byte(r/d);
-//  bytes[6] =byte(g/d);
-//  bytes[7] = byte(b/d);
-//  setLedColor(2);
-//  bytes[8] = byte(r/d);
-//  bytes[9] = byte(g/d);
-//  bytes[10] = byte(b/d);
-//  setLedColor(3);
-//  bytes[11] = byte(r/d);
-//  bytes[12] = byte(g/d);
-//  bytes[13] = byte(b/d);
-//  setLedColor(colorMode);
-//  bytes[14] = maxInsideTemp;
-//  bytes[15] = minInsideTemp;
-//  bytes[16] = maxInsideHum;
-//  bytes[17] = minInsideHum;
-//  bytes[18] = byte(maxPressure - 900);
-//  bytes[19] = byte(minPressure - 900);
-//  bytes[20] = byte(monthMax[_month]/10);
-//  bytes[21] = byte(monthMin[_month]/10);
-//  bytes[22] = maxOutsideHum;
-//  bytes[23] = minOutsideHum;
-//  bytes[24] = maxAverangeWind;
-//  bytes[25] = maxWind;
-//  bytes[26] = maxRain;
-//  bytes[27] = byte(sendInterval/8000);
-//  bytes[28] = byte(dhtInterval/1000);
-//  bytes[29] = byte(windInterval/50);
-//  bytes[30] = byte(startDimHour);
-//  bytes[31] = byte(stopDimHour);
-//  bytes[32] = colorModesRGB[0][0];
-//  bytes[33] = colorModesRGB[0][1];
-//  bytes[34] = colorModesRGB[0][2];
-//  bytes[35] = colorModesRGB[1][0];
-//  bytes[36] = colorModesRGB[1][1];
-//  bytes[37] = colorModesRGB[1][2];
-//  bytes[38] = colorModesHSV[0];
-//  bytes[39] = colorModesHSV[1];
-//  bytes[40] =byte(recieveDataFormInternet);
-//  Serial.write(bytes,41);
-////Serial.write(bytes[0]);
-////Serial.write(bytes[1]);
-////Serial.write(bytes[2]);
-////Serial.write(bytes[3]);
-////Serial.write(bytes[4]);
-// // Serial.write(byte(colorMode));
-//  Serial.flush();
-//}
-

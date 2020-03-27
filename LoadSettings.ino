@@ -103,10 +103,6 @@ void loadSettings(){
     if(a!=255){
       stopDimMinute =a; 
     }
-    a = EEPROM.read(27);
-    if(a !=0){
-      lightLock= true;
-    }
     a = EEPROM.read(28);
     networkOnlyMode =(boolean)a;
 //    a = EEPROM.read(27);

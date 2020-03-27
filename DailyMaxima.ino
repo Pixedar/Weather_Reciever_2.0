@@ -23,8 +23,8 @@ void calculateDailyMaxima(){
  dailyPressureSum+=pres;
  dailyInsideTemperatureSum+=temp;
  dailyInsideHumiditySum+=hum;
- dailyOutsideHumiditySum+=humO;
- dailyOutsideTemperatureSum+=tempO;
+ dailyOutsideHumiditySum+=shtHumO;
+ dailyOutsideTemperatureSum+=shtTempO;
  dailyWindSum+=maxCurrentWind;
  dailyAverangeWindSum+=averangeWind;
  dailyRain+=rain;
@@ -43,15 +43,15 @@ void calculateDailyMaxima(){
  }else if(hum > dailyInsideHumidityMaxima[1]){
   dailyInsideHumidityMaxima[1] = hum;
  }
- if(humO < dailyOutsideHumidityMaxima[0]){
-  dailyOutsideHumidityMaxima[0] = humO;
- }else if(humO > dailyOutsideHumidityMaxima[1]){
-  dailyOutsideHumidityMaxima[1] = humO;
+ if(shtHumO < dailyOutsideHumidityMaxima[0]){
+  dailyOutsideHumidityMaxima[0] = shtHumO;
+ }else if(shtHumO > dailyOutsideHumidityMaxima[1]){
+  dailyOutsideHumidityMaxima[1] = shtHumO;
  }
- if(tempO < dailyOutsideTemperatureMaxima[0]){
-  dailyOutsideTemperatureMaxima[0] = tempO;
- }else if(tempO > dailyOutsideTemperatureMaxima[1]){
-   dailyOutsideTemperatureMaxima[1] = tempO;
+ if(shtTempO < dailyOutsideTemperatureMaxima[0]){
+  dailyOutsideTemperatureMaxima[0] = shtTempO;
+ }else if(shtTempO > dailyOutsideTemperatureMaxima[1]){
+   dailyOutsideTemperatureMaxima[1] = shtTempO;
  }
  if(maxCurrentWind < dailyWindMaxima[0]){
   dailyWindMaxima[0] = maxCurrentWind;

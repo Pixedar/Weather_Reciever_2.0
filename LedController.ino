@@ -5,7 +5,6 @@
 #define HEAT_MODE_MAX 60
 const int hsvPlus_h_max = round(pow(10*HSV_V_MAX,1.0f/HSV_PLUS_COEFFICIENT));
 const int hsvPlus_h_min = round(pow(10,1.0f/HSV_PLUS_COEFFICIENT));
-
 void setLedColor(int8_t _mode){
   clockColorMode = false;
   switch(_mode){
@@ -108,13 +107,8 @@ int getVal(int index,int n,int m,int8_t value){
     //          Serial.println(normalize(shtCurrentTemp,maxInsideTemp[index],minInsideTemp[index],m,n));
     return normalize(shtCurrentTemp,maxInsideTemp[index],minInsideTemp[index],m,n);
     case 2: return normalize(shtCurrentHum,maxInsideHum[index],minInsideHum[index],m,n);
-    case 4: 
-     if(autoTempRangeMode){
-       return normalize(tempO,_max[index],_min[index],m,n);
-     }else{
-       return normalize(tempO,_max[index],_min[index],m,n);
-     }
-    case 5: return normalize(humO,minOutsideHum[index],maxOutsideHum[index],n,m);
+    case 4: return normalize(currentShtTempO,_max[index],_min[index],m,n);
+    case 5: return normalize(currentShtHumO,minOutsideHum[index],maxOutsideHum[index],n,m);
   //  case 6: return map(((currentWind + 0.5*lastCurrentWind)/1.5f)*k,0,maxWind*k,m,n);
     case 7: return normalize(windColor,0,maxWind[index],n,m);
      case 6: return normalize(interpolatedAverangeWind,0,maxAverangeWind[index],n,m);
@@ -213,5 +207,10 @@ void HSV_to_RGB(float h, float s, float v)
 float mapF(float value,float start1, float stop1,float start2, float stop2){
       return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
 }
-
-
+void ledAnalogWrite(){
+   if(!lightLock){
+    analogWrite(BLUE_PIN,1023 -((1-wp)*lastB + wp*b)*brightness);
+    analogWrite(GREEN_PIN,1023 -((1-wp)*lastG + wp*g)*brightness);
+    analogWrite(RED_PIN,1023 -((1-wp)*lastR + wp*r)*brightness);
+   }
+}

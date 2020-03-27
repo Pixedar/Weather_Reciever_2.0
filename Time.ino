@@ -1,7 +1,9 @@
 #define FLUID_DIMING_INTERVAL 100
 boolean dimmingFlag = false;
+boolean isDST;
 unsigned long fluidDimmingTime =0;
 boolean way = false;
+//long checkTimeInterval = 3600*1000;
 void updateFluidDimming(){
   if(dimmingFlag&&millis() > fluidDimmingTime +FLUID_DIMING_INTERVAL){
     if(way){
@@ -82,9 +84,7 @@ unsigned long updateTime(){
 }
 void getDateTime(){
 
-  timeClient.update();
   ntpTest();  
-    timeClient.update();
   epochTime = timeClient.getEpochTime();
   timeOffset = millis();
 
@@ -132,34 +132,26 @@ boolean checkDST(){
 //   EEPROM.begin(512);
 //   EEPROM.get(500,y);
 //   EEPROM.end();
+  timeClient.update();
+  if(year(timeClient.getEpochTime()) == y&&month(timeClient.getEpochTime()) !=0) return;
 
-  if(year(timeClient.getEpochTime()) < y||year(timeClient.getEpochTime()) ==y&&month(timeClient.getEpochTime()) ==0){
-   timeClient.update();
-   delay(1500);
-   }else{
-    return;
-   }
 
-   ntpTestHelper("tempus2.gum.gov.pl",y);
+   if(ntpTestHelper("tempus2.gum.gov.pl",y)) return;
+   if(ntpTestHelper("ntp1.tp.pl",y)) return;
+   if(ntpTestHelper("tempus2.gum.gov.pl",y)) return;
+   if(ntpTestHelper("ntp.itl.waw.pl",y)) return;
 
-   ntpTestHelper("ntp1.tp.pl",y);
-
-   ntpTestHelper("tempus2.gum.gov.pl",y);
-
-   ntpTestHelper("ntp.itl.waw.pl",y);
-
-   if(year(timeClient.getEpochTime()) < y||year(timeClient.getEpochTime()) ==y&&month(timeClient.getEpochTime()) ==0){
-      clearDisplay();
-      display.println("NTP error");
-      displayA();
-      delay(3500);
-    }
+   if(year(timeClient.getEpochTime()) == y&&month(timeClient.getEpochTime()) !=0) return;
+   
+   clearDisplay();
+   display.println("NTP error");
+   displayA();
+   delay(3500);
+    
 }
-void ntpTestHelper(char* v,int y){
- if(year(timeClient.getEpochTime()) < y||year(timeClient.getEpochTime()) ==y&&month(timeClient.getEpochTime()) ==0){
-     NTPClient timeClient(ntpUDP,v);
-     timeClient.update();
-     delay(700);
-  }
+boolean ntpTestHelper(char* v,int y){
+  if(year(timeClient.getEpochTime()) == y&&month(timeClient.getEpochTime()) !=0) return true;
+  NTPClient timeClient(ntpUDP,v);
+  timeClient.update();
+  return false;
 }
-

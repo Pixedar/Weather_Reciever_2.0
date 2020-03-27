@@ -8,7 +8,7 @@
 uint8_t segmentsIndex = 1;
 unsigned long segmentUpdateTime = 0;
 const int barWidth = 128;
-
+int8_t lastSecond =0;
 const unsigned char therm [] = {
 0x03, 0xC0, 0x02, 0x40, 0x06, 0x60, 0x06, 0x60, 0x06, 0x60, 0x06, 0x60, 0x06, 0x60, 0x06, 0x60,
 0x07, 0xE0, 0x07, 0xE0, 0x0D, 0xB0, 0x0B, 0xD0, 0x0B, 0xD0, 0x0D, 0xB0, 0x06, 0x60, 0x03, 0xC0
@@ -50,7 +50,7 @@ void drawTempSegment(int yMargintext, int yMarginIcon){
    display.setCursor(textXmarginA,yMargintext);
    display.println(String(shtCurrentTemp,1)+" C");
    display.setCursor(textXmarginB,yMargintext);
-   display.println(String(tempO,1) +" C");
+   display.println(String(currentShtTempO,1) +" C");
    display.drawBitmap(0,yMarginIcon, therm2, iconSize , iconSize , 1);
    display.drawBitmap(iconXmargin,yMarginIcon, therm2, iconSize , iconSize , 1);
    display.fillCircle(iconXmargin,yMarginIcon+2,1,WHITE);
@@ -108,7 +108,7 @@ if(sizeA > 2){
     display.drawLine(7,22+11 - (iconSize+iconYmargin) + yMarginIcon,7,22+11-sizeA- (iconSize+iconYmargin) + yMarginIcon,WHITE);
     display.drawLine(7+1,22+11- (iconSize+iconYmargin) + yMarginIcon,7+1,22+11-sizeA- (iconSize+iconYmargin) + yMarginIcon,WHITE);   
 }
-float sizeB = round(map(tempO,_min[0],_max[0],0,11));
+float sizeB = round(map(currentShtTempO,_min[0],_max[0],0,11));
 if(sizeB >2){
       display.fillRect(6+iconXmargin,30- (iconSize+iconYmargin) + yMarginIcon,4,2,WHITE);
 }
@@ -122,24 +122,24 @@ void drawHumSegment(int yMargintext, int yMarginIcon){
    display.println(String(shtCurrentHum,1)+"%");
   display.drawBitmap(0,yMarginIcon, drop2, iconSize , iconSize, 1); 
   display.setCursor(textXmarginB,yMargintext);
-   if(humO ==100){
+   if(currentShtHumO ==100.0f){
            display.println(String(rainSum,1)+" mm/h");
           display.drawBitmap(iconXmargin,yMarginIcon, rainIcon, iconSize , iconSize, 1);
    }else{
-       display.println(String(humO)+"%");
+       display.println(String(currentShtHumO,1)+"%");
        display.drawBitmap(iconXmargin,yMarginIcon, drop2, iconSize , iconSize, 1);  
        display.fillCircle(iconXmargin,yMarginIcon,1,WHITE); 
    }
 
      int8_t sizeQ = round(map(shtCurrentHum,minInsideHum[0],maxInsideHum[0],-1,-9));
-      int8_t sizeW = round(map(humO,minOutsideHum[0],maxOutsideHum[0],-1,-9));
+      int8_t sizeW = round(map(currentShtHumO,minOutsideHum[0],maxOutsideHum[0],-1,-9));
 
       //54
    for(int8_t k =0; k < 8;k++){
     if(sizeQ !=-1&& shtCurrentHum != 0.0){
        display.drawLine(4+k,13+yMarginIcon,4+k,13+yMarginIcon+sizeQ,WHITE);
     }
-    if(sizeW !=-1&& humO!=100){
+    if(sizeW !=-1&& currentShtHumO!=100){
         display.drawLine(4+k+iconXmargin,13+yMarginIcon,4+k+iconXmargin,13+yMarginIcon+sizeW,WHITE);
     }
    }
@@ -226,6 +226,93 @@ void displayWeatherData(boolean flag){
   
   }
   }
+boolean displayConnectionError(int httpCode ){
+   if(httpCode != 200){
+     clearDisplay();
+     display.print(F("HTTP ERROR: "));
+     display.println(String(httpCode));
+     display.println(F("ATTEMPT: "));
+     display.print(String(attempts));
+     displayA();
+     delay(1500);
+     return true;
+  }else{
+    return false;
+  }
+}
+boolean displayConnectionError(int httpCode,int del){
+   if(httpCode != 200){
+     clearDisplay();
+     display.print(F("HTTP ERROR: "));
+     display.println(String(httpCode));
+     displayA();
+     delay(del);
+     return true;
+  }else{
+    return false;
+  }
+}
+void displayNotification(){
+        if(clockColorMode){
+        display.setCursor(120,52);
+        display.print(F("s"));
+      }else{
+         display.fillRect(0,60,128,3,BLACK);
+        display.setCursor(83,52);
+        display.print(F("sending"));
+      }
+      displayA(); 
+}
+void displayWiFiConnecting(){
+  unsigned long ti = millis();
+  while (WiFi.status() != WL_CONNECTED&&millis() < ti+WIFI_CONNECTION_TIMEOUT) 
+  {
+    delay(20);
+    drawLoadingBar(map(millis() - ti,0,WIFI_CONNECTION_TIMEOUT,0,128),false);
+  }
+  clearLoadingBar();
+}
+void displayA(){
+  if(displayEnabled){
+  display.display();
+  }
+}
+void displayClock(){
+  unsigned long offset = (millis() - timeOffset)/1000;
+  _second = second(epochTime+offset);
+  if(lastSecond != _second){
+    lastSecond = _second;
+     _minute = minute(epochTime+offset);
+     _hour = hour(epochTime+offset);
+     display.setFont(&FreeSansBold12pt7b);
+     clearDisplay();
+     display.setCursor(1,22);
+     if(_hour < 10){
+      display.print(F("0"));
+     }
+     display.print(_hour);
+     display.print(F(" : "));
+     if(_minute < 10){
+      display.print(F("0"));
+     }
+     display.print(_minute);
+     display.print(F(" : "));
+     if(_second < 10){
+      display.print(F("0"));
+     }
+     display.print(_second);
+     displayA();
+     display.setFont();
 
-      
+     lastR = r;
+     lastB = b;
+     lastG = g;
+     setLedColor(colorMode);
+     wp = 0; 
+  }
+}
+void clearDisplay(){
+  display.clearDisplay();
+  display.setCursor(0,0);
+}      
         

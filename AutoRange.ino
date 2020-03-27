@@ -30,16 +30,25 @@ void updateLoadingBar(){
 }
 boolean setOutTempRange(int &index){
   String str;
+  String tmp;
   float val;
   int d;
- // str = getEntry(NumberOfConnectionAttempts,1);
  str = getCreatedAt(NumberOfConnectionAttempts);
+  str = getValue(str,'T',0);
   if(str.equals(F(""))){
     return false;
   }
-
-  val = getValue(str,separator,0).toFloat();
-  d = (int)(getValue(str,separator,1).toFloat());
+ tmp = getValue(str,'-',1);
+ if(tmp.charAt(0) == '0'){
+  tmp = String(tmp.charAt(1));
+ }
+ val = tmp.toInt();
+ tmp = getValue(str,'-',2);
+ if(tmp.charAt(0) == '0'){
+  tmp = String(tmp.charAt(1));
+ }
+ 
+  d = tmp.toInt();
 
   if(isnan(d)&&!isnan(val)&& val <=-1&& d <=-1&&val > 12&& d > 33){
     return false;
@@ -48,24 +57,24 @@ boolean setOutTempRange(int &index){
   updateLoadingBar();
   if(val >-1&&val<=12&&(_month == (int)val||_month == (int)(val-1))){
     str = getEntry(NumberOfConnectionAttempts,2);
-
      if(str.equals(F(""))){
         return false;
       }
       val = getValue(str,separator,0).toFloat();
-
       if(!isnan(val)&&val<40&&val>-30){
         absoluteMaxTemp = val;
       }else{
         return false;
       }
+      display.print(String(absoluteMaxTemp) + " ");
       val = getValue(str,separator,1).toFloat();
       if(!isnan(val)&&val<40&&val>-30){
         absoluteMinTemp = val;
       }else{
         return false;
       }
-
+      display.println(String(absoluteMinTemp));
+      displayA();
     if(_month == (int)(val-1)&&d<=29){
       absoluteMaxTemp = absoluteMaxTemp*0.45f;
       absoluteMinTemp = absoluteMinTemp*0.45f;
@@ -123,9 +132,7 @@ void initAutoRange(){
       EEPROM.put(180,1);
   }
   EEPROM.end();
-  //// fix 
-  absoluteMaxTemp = 11.0f;
-  absoluteMinTemp = -7.0;
+
   _max[0]=absoluteMaxTemp;
   _min[0] =absoluteMinTemp;
   clearLoadingBar();
@@ -213,7 +220,7 @@ boolean setRange(float maxVal[],float minVal[],int &index){
     index+=sizeof(float);
   //  displayDot();
   updateLoadingBar();
-    Serial.println(String(maxTemp));
+
     if(!isnan(maxTemp)&&!isnan(minTemp)&&maxTemp!=0.0f&&minTemp!=0.0f&&maxTemp!=minTemp){
       maxVal[0] = maxTemp;
       minVal[0] = minTemp;
@@ -243,8 +250,7 @@ boolean loadAutoRangeFromEEPROM(){
   index+=sizeof(float);
   EEPROM.get(index,minTemp);
   index+=sizeof(float);
-  Serial.println(maxTemp);
-  Serial.println(minTemp);
+
   
   if(isnan(maxTemp)||maxTemp>40.0f||maxTemp<-30.0f){
     return false;
@@ -301,43 +307,43 @@ boolean getStatusCode(){
 }
 boolean absoluteFlag = false;
 void calcMaxMinAbsolute(){
-   if (tempO >absoluteMaxTemp&&(tempO -absoluteMaxTemp)<4.0f) {
+   if (shtTempO >absoluteMaxTemp&&(shtTempO -absoluteMaxTemp)<4.0f) {
     if(!absoluteFlag){
       absoluteFlag =true;
     }else{
-       absoluteMaxTemp = tempO;
+       absoluteMaxTemp = shtTempO;
         absoluteFlag =false;
     }
-    } else if (tempO <absoluteMinTemp&&(absoluteMinTemp - tempO)<4.0f) {
+    } else if (shtTempO <absoluteMinTemp&&(absoluteMinTemp - shtTempO)<4.0f) {
        if(!absoluteFlag){  
       absoluteFlag =true;
        }else{
-           absoluteMinTemp = tempO;
+           absoluteMinTemp = shtTempO;
             absoluteFlag =false;
        }
    } 
 }
 void calculateAutoRange(int monthV) {
    float gj = 0;
-  if (!dataError&&!isnan(tempO)) {
+  if (!dataError&&!isnan(shtTempO)) {
     calcMaxMinAbsolute();
     if(monthV >=2&&monthV <=6&&absoluteMaxTemp<34.0f){
-      if(tempO > 0){
-        absoluteMaxTemp+=pow(tempO, SCALE_B)*(maximaScale*(sendInterval/SCALE_A))*1.4f;
+      if(shtTempO > 0){
+        absoluteMaxTemp+=pow(shtTempO, SCALE_B)*(maximaScale*(sendInterval/SCALE_A))*1.4f;
       }
-      absoluteMinTemp+=pow((OUT_OF_RANGE+tempO)-(OUT_OF_RANGE+absoluteMinTemp), SCALE_B)*(maximaScale*(sendInterval/SCALE_A));
+      absoluteMinTemp+=pow((OUT_OF_RANGE+shtTempO)-(OUT_OF_RANGE+absoluteMinTemp), SCALE_B)*(maximaScale*(sendInterval/SCALE_A));
     }else if(monthV >=9&&monthV <=11){
-      gj = (OUT_OF_RANGE+absoluteMaxTemp)-(OUT_OF_RANGE+tempO);
+      gj = (OUT_OF_RANGE+absoluteMaxTemp)-(OUT_OF_RANGE+shtTempO);
       if(gj >0){
         absoluteMaxTemp-=pow(gj, SCALE_B)*(maximaScale*(sendInterval/SCALE_A));
       }
       absoluteMinTemp-=0.00026f;  
     }else{
-      gj = (OUT_OF_RANGE+absoluteMaxTemp)-(OUT_OF_RANGE+tempO);
+      gj = (OUT_OF_RANGE+absoluteMaxTemp)-(OUT_OF_RANGE+shtTempO);
       if(gj >0){
         absoluteMaxTemp-=pow(gj, SCALE_B)*(maximaScale*(sendInterval/SCALE_A));
       }
-      gj = (OUT_OF_RANGE+tempO)-(OUT_OF_RANGE+absoluteMinTemp);
+      gj = (OUT_OF_RANGE+shtTempO)-(OUT_OF_RANGE+absoluteMinTemp);
       if(gj >0){
       absoluteMinTemp+=pow(gj, SCALE_B)*(maximaScale*(sendInterval/SCALE_A));
       }
@@ -398,8 +404,8 @@ void calculateAutoRange(int monthV) {
     if(rain > maxRain[0]&&!isnan(rain)){
       maxRain[0] = rain;
     }
-    if(humO < minOutsideHum[0]&&!isnan(humO)){
-      minOutsideHum[0] = humO;
+    if(shtHumO < minOutsideHum[0]&&!isnan(shtHumO)){
+      minOutsideHum[0] = shtHumO;
 //      saveRangeToEEPROM(minOutsideHum[0],59+10*4);
     }
   }
@@ -541,4 +547,3 @@ void setMaxMin(){
 //        ptr = strtok(NULL, separator);
 //  }
 //}
-

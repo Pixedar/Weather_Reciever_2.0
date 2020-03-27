@@ -19,7 +19,7 @@ void buttonControler(){
   if(millis() > buttonTime + 3600&& lock){
      clearDisplay();
      display.println("Home:    " + String(temp,1) +"C  " +String(hum,1)+"%");
-     display.println("Outside: " + String(tempO,1) +"C  "+String(humO)+"%");
+     display.println("Outside: " + String(shtTempO,1) +"C  "+String(shtHumO)+"%");
      display.println(String(pres,1) + "hPa "+String(rain)+"mm    "+String(maxCurrentWind)+"kmh");      
      displayA(); 
      lock = false;
@@ -55,19 +55,6 @@ void checkRealTimeWind(){
     }
     break;
   }
-  if(enable&&!realTimeWind){
-    mySerial.write((byte)6);
-    mySerial.write((byte)1);
-    if(checkResponse(false)){
-      realTimeWind =true;
-    }
-  }else if(!enable&&realTimeWind){
-    mySerial.write((byte)6);
-    mySerial.write((byte)0);
-    if(checkResponse(false)){
-      realTimeWind =false;
-    }
-  }
 }
 
 void displayColorMode(){
@@ -96,4 +83,3 @@ void displayBrightness(){
    displayA();
   //delay(700);
 }
-

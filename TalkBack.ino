@@ -104,9 +104,9 @@ char getDelimiter(){
 }
 void readOutsideData(String str){
  String srA= getValue(str,DELIMITER_B,1);
- tempO = srA.toFloat();
+ shtTempO = srA.toFloat();
  srA= getValue(str,DELIMITER_B,2);
- humO = srA.toInt();
+ shtHumO = srA.toInt();
  srA= getValue(str,DELIMITER_B,3);
  averangeWind = srA.toFloat();
  srA= getValue(str,DELIMITER_B,4);
@@ -114,4 +114,3 @@ void readOutsideData(String str){
  srA= getValue(str,DELIMITER_B,5);
  rain= srA.toInt();
  }
-

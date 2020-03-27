@@ -7,14 +7,13 @@ const char * autoRangeApikey = "T44K8QM9YHVD73WG";
 #define TALK_BACK_KEY_A "GKUDL9YXUNXZG425"
 #define TALK_BACK_KEY_B "D60O4AD1A7RLMUI7"
 #define TALK_BACK_DEBUG_KEY "QFJRR6QS7OBFFPAK"
-float lastTempO =0;
-float lastAvgWind =0;
-float lastWind =0;
-int lastRain =0;
-int lastHumO =0;
-boolean firstTime = true;
+
 #define NUM_OF_ATTEMPTS 4
 #define MEM_SIZE 1000 // uwaga bylo 2000 ale ide pokazywalo ze za malo apmieci i moga byc probelmy ze stabuilnoscia mimo to esp dzialalo stabilnie
+
+#define BAD_VALUE_ERROR_CODE -125
+#define POCKET_LOST_RATIO_THRESHOLD 0.8
+
 int8_t attempts = 0;
 byte fields[MEM_SIZE][8];
 unsigned long timestamps[MEM_SIZE];
@@ -25,63 +24,204 @@ boolean arrayCompressed = false;
 int timestampsCounter = 0;
 const unsigned long debugId = 556803;
 String talkBackCommand = "";
-String setFields(boolean saved){
-  String error = "";
-    if (signalReceived) {
-      if (humO ==0&&tempO==0) {
-        error+="dht error ";
-      } else {
-        if (tempO <-39||tempO >39.9||((abs(lastTempO-tempO)>3.85f)&&!firstTime)) {
-          error+="tempO= "+String(tempO);
-        } else if(!networkOnlyMode){
-          ThingSpeak.setField(1, String(tempO,2));
-          if(!saved){
-             lastTempO = tempO; 
-          }
-        }
-        if (humO >100||humO < 0||((abs(lastHumO - humO)>35)&&!firstTime)) {
-          error+="humO= "+String(humO);
-        } else if(!networkOnlyMode) {
-            ThingSpeak.setField(3, humO);
-            if(!saved){   
-                lastHumO = humO;
-            }
-        }
-      }  
+int shtOsamplesCpy;
 
-      if(averangeWind <0|| averangeWind >49||((abs(lastAvgWind - averangeWind) > 10)&&!firstTime)){
-        error+="averangeWind= "+String(averangeWind);
-      }else if(!networkOnlyMode){ 
-        ThingSpeak.setField(6,String(averangeWind,2));
-        if(!saved){
-          lastAvgWind =  averangeWind;
-        }
-      }
-      
-      if (maxCurrentWind <0||maxCurrentWind >70||(abs(lastWind - maxCurrentWind)>40)&&!firstTime) {
-        error+="maxCurrentWind= "+String(maxCurrentWind);
-      } else if(!networkOnlyMode){
-        ThingSpeak.setField(7,maxCurrentWind);
-         if(!saved){
-          lastWind = maxCurrentWind;
-         }
-      }
-      
-      if(rain <0|| rain >99||(abs(lastRain - rain) > 30&&!firstTime)){
-        error+="rain= "+String(rain);
-      }else{
-          ThingSpeak.setField(8,rain);  
-         if(!saved){
-            lastRain = rain;
-         }
-      }
-   
-      if(firstTime&&!networkOnlyMode){
- 
-        
-        firstTime = false;
-      } 
+
+const long id = 333150;
+const char * key = "12RUI1FA6G5C5CWM"; 
+
+void loadValue(int8_t index,float &v,boolean &errorFlag){
+  const float tmp =ThingSpeak.readFloatField(id,index, key);
+  if(ThingSpeak.getLastReadStatus()!=200){
+    errorFlag = true;
+    return;
+  } 
+  v = tmp;
+}
+void loadValue(int8_t index,byte &v,boolean &errorFlag){
+  const float tmp =ThingSpeak.readFloatField(id,index, key);
+  if(ThingSpeak.getLastReadStatus()!=200){
+    errorFlag = true;
+    return;
+  } 
+  v = tmp;
+}
+
+boolean networkVersion(){
+//  boolean errorFlag = false;
+//  loadValue(1,tempO,errorFlag);
+//  loadValue(3,humO,errorFlag);
+//  loadValue(6,averangeWind,errorFlag);
+//  loadValue(7,maxCurrentWind,errorFlag);
+//  if(errorFlag){
+//    displayConnectionError(0);
+//  }   
+//readTalkBackCommands();         
+ // tempO = ThingSpeak.readFloatField(id,1, key);
+ // humO = ThingSpeak.readFloatField(id,3, key);
+ // averangeWind = ThingSpeak.readFloatField(id,6, key);
+//  maxCurrentWind = ThingSpeak.readFloatField(id,7, key);
+//  displayConnectionError(ThingSpeak.getLastReadStatus());
+  
+  if(!clockColorMode){
+    displayWeatherData(true);
+    display.setCursor(74,52);
+    display.print(F("receiving"));
+  }else{
+    display.setCursor(120,52);
+    display.print(F("r"));
+  }
+  displayA();  
+String stat = "";
+const char delC = 'Q';
+ stat = ThingSpeak.readStatus(id, key);
+ if(stat != ""){
+  shtTempO = getValue(stat,delC,0).toFloat();
+  shtHumO= getValue(stat,delC,1).toInt();
+  averangeWind = getValue(stat,delC,2).toFloat();
+  maxCurrentWind = getValue(stat,delC,3).toInt();
+  rain = getValue(stat,delC,4).toInt();
+ }
+  displayWeatherData(true);
+  return true;
+}
+
+
+void caclulateAvgMeasurements(){
+  const float q = 100.0f;
+     if(samples == 0){
+      samples = 1;
+     }
+     if(pressureSamples ==0){
+      pressureSamples =1;
+     }
+     temp = round((tempSum*q)/samples)/q;
+     hum = round((humSum*q)/samples)/q;
+     pres = round(presSum/pressureSamples)/q;
+
+    calcRainSum();
+    if(shtOsamples ==0){
+      shtTempO = BAD_VALUE_ERROR_CODE;
+      shtHumO = BAD_VALUE_ERROR_CODE;
+    }else{
+    shtTempO = round((tempOsum*q)/shtOsamples)/q;
+    shtHumO = round((humOsum*q)/shtOsamples)/q;
     }
+    if(dhtOsamples ==0){
+      dhtHumO = BAD_VALUE_ERROR_CODE;
+    }else{
+      dhtHumO = round((dhtHumOsum*q)/dhtOsamples)/q;
+    }
+    if(dhtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO!=BAD_VALUE_ERROR_CODE){
+      shtHumO = (dhtHumO+shtHumO)/2.0f;
+    }
+    if(analogLightOsamples == 0){
+      analogLightO = BAD_VALUE_ERROR_CODE;
+    }else{
+      analogLightO = round((analogLightOsum*q)/analogLightOsamples)/q;
+    }
+    if(analogRainOsamples ==0){
+      analogRainO =BAD_VALUE_ERROR_CODE;
+    }else{
+      analogRainO = round((analogRainOsum*q)/analogRainOsamples)/q;
+    }
+    if(analogHumOsamples ==0){
+      analogHumO = BAD_VALUE_ERROR_CODE;
+    }else{
+      analogHumO = getAnalogHum(round((analogHumOsum*q)/analogHumOsamples)/q);
+    }
+    if(bmpOsamples ==0){
+      presO =  BAD_VALUE_ERROR_CODE;
+    }else{
+       presO = round((presOsum*q)/bmpOsamples)/q;
+    }
+    shtOsamplesCpy = shtOsamples;
+    shtOsamples =0;
+    dhtOsamples =0;
+    analogLightOsamples =0;
+    analogRainOsamples =0;
+    analogHumOsamples =0;
+    bmpOsamples =0;
+
+    tempOsum =0;
+    dhtHumOsum =0;
+    analogLightOsum =0;
+    analogRainOsum =0;
+    analogHumOsum =0;
+    presOsum = 0;
+    humOsum =0;
+    
+    tempSum = 0;
+    humSum =0;
+    presSum = 0;
+    samples =0;
+    pressureSamples = 0;
+}
+int getAnalogHum(float stepV){
+  double volt = (double)stepV * (5.0 / 1023.0);
+  return (int)amt1001_gethumidity(volt);
+}
+String setFieldsForChannelB(){
+  String error = "";
+  if(analogLightO!=BAD_VALUE_ERROR_CODE&&analogLightO>=analogMin&& analogLightO <=analogMax){
+    ThingSpeak.setField(1, String(analogLightO,2));
+  }else{
+    error+="analogLightO= "+String(analogLightO);
+  }
+  if(analogRainO!=BAD_VALUE_ERROR_CODE&&analogRainO>=analogMin&& analogRainO <=analogMax){
+    ThingSpeak.setField(3, String(analogRainO,2));
+  }else{
+    error+="analogRainO= "+String(analogRainO);
+  }
+   if(analogHumO!=BAD_VALUE_ERROR_CODE&&analogHumO>=analogMin&& analogHumO <=analogMax){
+    ThingSpeak.setField(6, String(analogHumO,2));
+  }else{
+    error+="analogHumO= "+String(analogHumO);
+  }
+  if(presO!=BAD_VALUE_ERROR_CODE&&presO>=presMin/100.0f&& presO <=presMax/100.0f){
+    ThingSpeak.setField(7, String(presO,2));
+  }else{
+    error+="presO= "+String(presO);
+  }
+  ThingSpeak.setField(8, String(shtOsamplesCpy));
+  return error;
+}
+String setFieldsForChannelA(){
+  String error = "";
+    if(shtTempO!=BAD_VALUE_ERROR_CODE&&shtTempO >=sht31TempMin&& shtTempO <=sht31TempMax){
+      ThingSpeak.setField(1, String(shtTempO,2));
+    }else{
+      error+="shtTempO= "+String(shtTempO);
+    }
+    if(shtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO >=humMin&& shtHumO <=humMax){
+      ThingSpeak.setField(3, String(shtHumO,2));
+    }else{
+      error+="shtHumO= "+String(shtHumO);
+    }
+    if(rain >=0&& rain <=200){  ///// todo zalezne od sending interval
+      ThingSpeak.setField(8,rain); 
+    }else{
+      error+="rain= "+String(rain);
+    }
+    rain =0;
+//      if(averangeWind <0|| averangeWind >49||((abs(lastAvgWind - averangeWind) > 10)&&!firstTime)){
+//        error+="averangeWind= "+String(averangeWind);
+//      }else if(!networkOnlyMode){ 
+//        ThingSpeak.setField(6,String(averangeWind,2));
+//        if(!saved){
+//          lastAvgWind =  averangeWind;
+//        }
+//      }
+      
+//      if (maxCurrentWind <0||maxCurrentWind >70||(abs(lastWind - maxCurrentWind)>40)&&!firstTime) {
+//        error+="maxCurrentWind= "+String(maxCurrentWind);
+//      } else if(!networkOnlyMode){
+//        ThingSpeak.setField(7,maxCurrentWind);
+//         if(!saved){
+//          lastWind = maxCurrentWind;
+//         }
+//      }
+         
     if (temp != 0.0f) {
   //    if(networkOnlyMode){
    //     talkBackCommand+=getDelimiter()+String(temp,2);
@@ -141,9 +281,9 @@ void saveFieldsToMemeory(unsigned long createdAtTime){
     timestamps[timestampsCounter] = createdAtTime;
     timestampsCounter++;
     if(!arrayCompressed){
-    saveAsByteArr(fieldsCounter,0,tempO);
+    saveAsByteArr(fieldsCounter,0,shtTempO);
     saveAsByteArr(fieldsCounter,1,temp);
-    saveAsByteArr(fieldsCounter,2,humO);
+    saveAsByteArr(fieldsCounter,2,shtHumO);
     saveAsByteArr(fieldsCounter,3,hum);
     saveAsByteArr(fieldsCounter,4,pres);
     saveAsByteArr(fieldsCounter,5,averangeWind);
@@ -151,9 +291,9 @@ void saveFieldsToMemeory(unsigned long createdAtTime){
     saveAsByteArr(fieldsCounter,7,rain);             
     fieldsCounter+=4;
     }else{
-    fields[fieldsCounter][0] = (byte)(30+tempO)+(byte)floor((tempO -(int)(tempO))/0.5f)*70;
+    fields[fieldsCounter][0] = (byte)(30+shtTempO)+(byte)floor((shtTempO -(int)(shtTempO))/0.5f)*70;
     fields[fieldsCounter][1] = (byte)(temp-16)+(byte)floor((temp -(int)(temp))/0.0625f)*15;
-    fields[fieldsCounter][2] = (byte)(humO);
+    fields[fieldsCounter][2] = (byte)(shtHumO);
     fields[fieldsCounter][3] = (byte)(hum);
     fields[fieldsCounter][4] = (byte)(pres-959.0f)+(byte)floor((pres -(int)(pres))/0.25f)*50;
     fields[fieldsCounter][5] = (byte)(averangeWind)+(byte)floor((averangeWind -(int)(averangeWind))/0.0625f)*15;
@@ -215,9 +355,9 @@ unsigned long readFieldsFromMemeory(){
   if(fieldsCounter > 0){
    timestampsCounter--;
   if(!arrayCompressed){
-   tempO = readFromByteArr(fieldsCounter,0);
+   shtTempO = readFromByteArr(fieldsCounter,0);
    temp=  readFromByteArr(fieldsCounter,1); 
-   humO=  readFromByteArr(fieldsCounter,2);
+   shtHumO=  readFromByteArr(fieldsCounter,2);
    hum=  readFromByteArr(fieldsCounter,3);
    pres=  readFromByteArr(fieldsCounter,4); 
    averangeWind= readFromByteArr(fieldsCounter,5);
@@ -225,9 +365,9 @@ unsigned long readFieldsFromMemeory(){
    rain=  readFromByteArr(fieldsCounter,7);      
    fieldsCounter-=4;
    }else{
-    tempO = (float)fields[fieldsCounter][0] - floor(fields[fieldsCounter][0]/70)*70.0f +floor(fields[fieldsCounter][0]/70)*0.5f;
+    shtTempO = (float)fields[fieldsCounter][0] - floor(fields[fieldsCounter][0]/70)*70.0f +floor(fields[fieldsCounter][0]/70)*0.5f;
     temp=  (float)fields[fieldsCounter][1] - floor(fields[fieldsCounter][1]/15)*15.0f +floor(fields[fieldsCounter][1]/15)*0.0625f;
-    humO=  (float)fields[fieldsCounter][2];
+    shtHumO=  (float)fields[fieldsCounter][2];
     hum=  (float)fields[fieldsCounter][3];
     pres=  (float)fields[fieldsCounter][4] - floor(fields[fieldsCounter][4]/50)*50.0f +floor(fields[fieldsCounter][4]/50)*0.25f;
     averangeWind= (float)fields[fieldsCounter][5] - floor(fields[fieldsCounter][5]/15)*15.0f +floor(fields[fieldsCounter][5]/15)*0.0625f;
@@ -240,7 +380,8 @@ unsigned long readFieldsFromMemeory(){
 }
 void sendData(unsigned long createdAtTime,boolean saved) { 
   displayNotification();
-  String error = setFields(saved);
+  caclulateAvgMeasurements();
+  String error = setFieldsForChannelA();
   if(createdAtTime>0){
     ThingSpeak.setCreatedAt(getTimestamp(createdAtTime));
   }else{
@@ -273,9 +414,16 @@ void sendData(unsigned long createdAtTime,boolean saved) {
     //  readTalkBackCommands(TALK_BACK_ID_B,TALK_BACK_KEY_B); ////////////////////// zeby od razu sprawdzilo komende zwortna uwaga moze kolidowac z limitem czasowym komend na thikspeak 
     
   //  }
+      savedDataSendTime =millis();
+      
+  error+= setFieldsForChannelB();
+  httpCode =ThingSpeak.writeFields(556803, debugApikey); 
+  
     success = true;
-    attempts =0; 
-    savedDataSendTime =millis();    
+    attempts =0;     
+  }
+  if((float)(rf_pocketsLostCounter/rf_pocketsReceivedCounter) > POCKET_LOST_RATIO_THRESHOLD){
+    error+="pocket lost ratio: " + String((float)(rf_pocketsLostCounter/rf_pocketsReceivedCounter),3);
   }
   if (!error.equals("")) {
     sendError(error);
@@ -303,45 +451,3 @@ void sendError(String error) {
   }
   readTalkBackCommands(TALK_BACK_DEBUG_ID,TALK_BACK_DEBUG_KEY);
 }
-
-boolean displayConnectionError(int httpCode ){
-   if(httpCode != 200){
-     clearDisplay();
-     display.print(F("HTTP ERROR: "));
-     display.println(String(httpCode));
-     display.println(F("ATTEMPT: "));
-     display.print(String(attempts));
-     displayA();
-     delay(1500);
-     return true;
-  }else{
-    return false;
-  }
-}
-boolean displayConnectionError(int httpCode,int del){
-   if(httpCode != 200){
-     clearDisplay();
-     display.print(F("HTTP ERROR: "));
-     display.println(String(httpCode));
-     displayA();
-     delay(del);
-     return true;
-  }else{
-    return false;
-  }
-}
-void displayNotification(){
-        if(clockColorMode){
-        display.setCursor(120,52);
-        display.print(F("s"));
-      }else{
-         display.fillRect(0,60,128,3,BLACK);
-        display.setCursor(83,52);
-        display.print(F("sending"));
-      }
-      displayA(); 
-}
-
-
-
-
