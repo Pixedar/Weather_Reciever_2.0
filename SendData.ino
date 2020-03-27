@@ -188,17 +188,17 @@ String setFieldsForChannelB(){
 }
 String setFieldsForChannelA(){
   String error = "";
-    if(shtTempO!=BAD_VALUE_ERROR_CODE&&shtTempO >=sht31TempMin&& shtTempO <=sht31TempMax){
+    if(shtTempO!=BAD_VALUE_ERROR_CODE&&shtTempO >=sht31TempMin&& shtTempO <=sht31TempMax&&!networkOnlyMode){
       ThingSpeak.setField(1, String(shtTempO,2));
     }else{
       error+="shtTempO= "+String(shtTempO);
     }
-    if(shtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO >=humMin&& shtHumO <=humMax){
+    if(shtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO >=humMin&& shtHumO <=humMax&&!networkOnlyMode){
       ThingSpeak.setField(3, String(shtHumO,2));
     }else{
       error+="shtHumO= "+String(shtHumO);
     }
-    if(rain >=0&& rain <=200){  ///// todo zalezne od sending interval
+    if(rain >=0&& rain <=200&&!networkOnlyMode){  ///// todo zalezne od sending interval
       ThingSpeak.setField(8,rain); 
     }else{
       error+="rain= "+String(rain);
@@ -415,10 +415,10 @@ void sendData(unsigned long createdAtTime,boolean saved) {
     
   //  }
       savedDataSendTime =millis();
-      
+   if(!networkOnlyMode){  
   error+= setFieldsForChannelB();
   httpCode =ThingSpeak.writeFields(556803, debugApikey); 
-  
+   }
     success = true;
     attempts =0;     
   }

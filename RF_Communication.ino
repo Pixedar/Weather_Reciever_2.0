@@ -25,6 +25,7 @@ boolean successFlag = false;
 
 void rfCommunication(){
   while(mySerial.available()){
+    networkOnlyMode = false;
     successFlag = false;
     getID();
     if(rf_id == 0){
