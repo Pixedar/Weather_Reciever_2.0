@@ -128,7 +128,7 @@ void caclulateAvgMeasurements(){
     if(analogHumOsamples ==0){
       analogHumO = BAD_VALUE_ERROR_CODE;
     }else{
-      analogHumO = getAnalogHum(round((analogHumOsum*q)/analogHumOsamples)/q);
+      analogHumO = round((analogHumOsum*q)/analogHumOsamples)/q;
     }
     if(bmpOsamples ==0){
       presO =  BAD_VALUE_ERROR_CODE;
@@ -173,16 +173,16 @@ String setFieldsForChannelB(){
   }else{
     error+="analogRainO= "+String(analogRainO);
   }
-   if(analogHumO!=BAD_VALUE_ERROR_CODE&&analogHumO>=analogMin&& analogHumO <=analogMax){
+ //  if(analogHumO!=BAD_VALUE_ERROR_CODE&&analogHumO>=analogMin&& analogHumO <=analogMax){
     ThingSpeak.setField(6, String(analogHumO,2));
-  }else{
-    error+="analogHumO= "+String(analogHumO);
-  }
-  if(presO!=BAD_VALUE_ERROR_CODE&&presO>=presMin/100.0f&& presO <=presMax/100.0f){
-    ThingSpeak.setField(7, String(presO,2));
-  }else{
-    error+="presO= "+String(presO);
-  }
+ // }else{
+//    error+="analogHumO= "+String(analogHumO);
+//  }
+//  if(presO!=BAD_VALUE_ERROR_CODE&&presO>=presMin/100.0f&& presO <=presMax/100.0f){
+//    ThingSpeak.setField(7, String(presO,2));
+//  }else{
+//    error+="presO= "+String(presO);
+//  }
   ThingSpeak.setField(8, String(shtOsamplesCpy));
   return error;
 }

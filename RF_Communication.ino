@@ -24,12 +24,13 @@ unsigned long timeOutCtn;
 boolean successFlag = false;
 
 void rfCommunication(){
-  while(mySerial.available()){
+  while(Serial.available()){
     networkOnlyMode = false;
     successFlag = false;
     getID();
     if(rf_id == 0){
-      mySerial.flush();
+ //     Serial.flush();
+         serialFlush();
       continue;
     }
     switch((int)rf_id){
@@ -42,7 +43,7 @@ void rfCommunication(){
       case RAIN_ID: rain++; break;
       case STRING_TRASMISSION_CODE: readText(false); break;
       case ERROR_STRING_TRASMISSION_CODE: readText(true); break;
-      default: mySerial.flush();
+      default: serialFlush();
     }
     if(!successFlag){
       rf_pocketsLostCounter++;
@@ -141,38 +142,38 @@ boolean read(int &val){
 }
 int readInt(boolean &flag){
    if(!checkSerial()){ flag = true; return 0;}
-   tmpBuf[0] = mySerial.read();
+   tmpBuf[0] = Serial.read();
    if(!checkSerial()){ flag = true; return 0;}
-   tmpBuf[1] = mySerial.read();
+   tmpBuf[1] = Serial.read();
   return tmpBuf[0]|tmpBuf[1]<<8;
 }
 void getID(){
   boolean flag = false;
     for(j =0; j < DATA_ITERATION/2; j++){
         if(!checkSerial()) flag = true;
-        rf_id = mySerial.read();
+        rf_id = Serial.read();
         if(!checkSerial()) flag = true;
-        if(rf_id != mySerial.read()) flag = true;
+        if(rf_id != Serial.read()) flag = true;
     }
     if(flag) rf_id = 0;
 }
 float readFloat(boolean &flag){
       if(!checkSerial()){ flag = true; return 0;}
-      tmpBuf[0] = mySerial.read();
+      tmpBuf[0] = Serial.read();
       if(!checkSerial()){ flag = true; return 0;}
-      tmpBuf[1] = mySerial.read();
+      tmpBuf[1] = Serial.read();
       if(!checkSerial()){ flag = true; return 0;}
-      tmpBuf[2] = mySerial.read();
+      tmpBuf[2] = Serial.read();
       if(!checkSerial()){ flag = true; return 0;}
-      tmpBuf[3] = mySerial.read();
+      tmpBuf[3] = Serial.read();
       float result = *((float*)(tmpBuf));
       return result;
 }
 boolean checkSerial(){
-    if(!mySerial.available()){
+    if(!Serial.available()){
       timeOutCtn = millis();
       while(millis() < timeOutCtn + TIMEOUT){
-        if(mySerial.available()){
+        if(Serial.available()){
           return true;
         }
         yield();
@@ -180,6 +181,12 @@ boolean checkSerial(){
       return false;
     }
     return true;
+}
+void serialFlush(){
+  while(Serial.available()){
+    Serial.read();
+    yield();
+  }
 }
 //czas wykonania funckji interwal 30ms 115200bps rozmiar 15*2
 //max 19273 ~ 19ms

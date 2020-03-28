@@ -10,8 +10,8 @@ void initialise(){
   pinMode(HC_CTRL_PIN,INPUT);
   digitalWrite(HC_CTRL_PIN,LOW);
   
-  Serial.begin(115200);
-  mySerial.begin(9600);
+  Serial.begin(9600);
+  mySerial.begin(57600);
 
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
@@ -104,7 +104,7 @@ void initialise(){
   displayTime = millis();
   rgbTime = millis();
   
-  mySerial.flush();
+  serialFlush();
 }
 void connectToWiFi(){
   if(handleWiFiConnect()) return; 

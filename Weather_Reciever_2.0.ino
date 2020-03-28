@@ -29,8 +29,6 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
 #define HC_CTRL_PIN 14
 #define SOFT_SERIAL_RX 5
 #define SOFT_SERIAL_TX 4
-#define BT_SERIAL_RX 10
-#define BT_SERIAL_TX 9
 
 #define DEBUG false
 #define SERIAL_TIMEOUT 3500
@@ -46,7 +44,6 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
 //Adafruit_SSD1306 display(OLED_RESET);
 Adafruit_SH1106 display(OLED_RESET);
 SoftwareSerial mySerial(SOFT_SERIAL_RX, SOFT_SERIAL_TX);
-SoftwareSerial btSerial(BT_SERIAL_RX, BT_SERIAL_TX);
 Adafruit_BMP280 bmp;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP,"tempus1.gum.gov.pl");
@@ -247,7 +244,7 @@ void setHcSettings(){
         pinMode(HC_CTRL_PIN,OUTPUT);
             digitalWrite(HC_CTRL_PIN,LOW);
             delay(40);
-            mySerial.flush();
+            Serial.flush();
           break;
     }
     mySerial.write(b);
@@ -313,7 +310,7 @@ if(millis() > sendTime +sendInterval){
     sendAutoRangeToServer(1,false);
     colorChangeInterval = 980;
     colorChangeIntervalResolution = 35; 
-    mySerial.flush();
+    serialFlush();
   sendTime =millis();
 }
  
@@ -352,7 +349,7 @@ void readPressure(){
     }
     pressureReadTime = millis();
     if(transmitCurrentPressure){
-      Serial.println(currentPressure);
+      mySerial.println(currentPressure);
     }
   }
 }

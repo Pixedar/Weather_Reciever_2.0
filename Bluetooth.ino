@@ -1,17 +1,17 @@
 void readBluetoothCommands() {
-  if (Serial.available()) {
+  if (mySerial.available()) {
     unsigned long t = millis();
     byte a,b,c,d;
     float mc[2] ={0,0};
     while (millis() < t + 3000&&!displayHeartBeatEnabled) {
       delay(2);
-      if (Serial.available()) {
-        switch(Serial.read()) {
+      if (mySerial.available()) {
+        switch(mySerial.read()) {
         case 0:
           sendSettings(false);
           break;
         case 1:
-          brightness = float(Serial.read())/100.0f;
+          brightness = float(mySerial.read())/100.0f;
           ledAnalogWrite();
           analogValue = brightness*100;
           displayBrightness();
@@ -19,7 +19,7 @@ void readBluetoothCommands() {
           digitalWrite(LED_BUILTIN, LOW);
           break;
         case 2:
-          colorMode = Serial.read();
+          colorMode = mySerial.read();
           setColor(true);
           saveByte((byte)colorMode,0);
           break;
@@ -49,11 +49,11 @@ void readBluetoothCommands() {
           
           break;
         case 8:
-          startDimHour = Serial.read();
-          stopDimHour = Serial.read();
-          startDimMinute = Serial.read();
-          stopDimMinute = Serial.read();
-          fluidDimming = (int)Serial.read();
+          startDimHour = mySerial.read();
+          stopDimHour = mySerial.read();
+          startDimMinute = mySerial.read();
+          stopDimMinute = mySerial.read();
+          fluidDimming = (int)mySerial.read();
           if(isnan(fluidDimming)||fluidDimming<0){
             fluidDimming = 0;
           }
@@ -66,7 +66,7 @@ void readBluetoothCommands() {
           saveByte((byte)stopDimMinute ,26);
           break;
         case 9:
-          networkOnlyMode = boolean(Serial.read());
+          networkOnlyMode = boolean(mySerial.read());
           clearDisplay();
           display.println(F("NetworkOnlyMode: "));
           display.print(String(networkOnlyMode));
@@ -74,7 +74,7 @@ void readBluetoothCommands() {
           saveByte((byte)networkOnlyMode  ,28);
           break;
         case 10:
-          if(boolean(Serial.read())){
+          if(boolean(mySerial.read())){
         //    display.testDim(1);
           }else{
         //    display.testDim(0);
@@ -88,7 +88,7 @@ void readBluetoothCommands() {
           }
           break;
         case 14:
-          d = Serial.read();
+          d = mySerial.read();
           if(d >byte(0)&& d <=byte(125)){
             maximaScale = ((float)d/100000000.0f);
             display.println(F("AutoTemp scale:"));
@@ -100,7 +100,7 @@ void readBluetoothCommands() {
             displayA();
           break;
         case 16:
-          d = Serial.read();
+          d = mySerial.read();
           if(d>=0&&d < sizeof(rangeMode)/sizeof(boolean)){
             rangeMode[d] = true;
           }
@@ -112,7 +112,7 @@ void readBluetoothCommands() {
            ESP.restart();  
            break;
        case 19:
-           d = Serial.read();
+           d = mySerial.read();
            if(d < 9){
             rangeMode[d] = false;
             clearDisplay();
@@ -124,7 +124,7 @@ void readBluetoothCommands() {
            displayA();
            break;
         case 20:
-           hsv_h_ext = (int)(Serial.read());        
+           hsv_h_ext = (int)(mySerial.read());        
           break;
         case 21:
             setBmpFilter();
@@ -150,17 +150,17 @@ void readBluetoothCommands() {
           }
           break;
         case 26: // hex 0x1A kalibracja diody     
-          analogWrite(BLUE_PIN,(Serial.read()/100.0f)*1023);
-          analogWrite(GREEN_PIN,(Serial.read()/100.0f)*1023);
-          analogWrite(RED_PIN,(Serial.read()/100.0f)*1023);
+          analogWrite(BLUE_PIN,(mySerial.read()/100.0f)*1023);
+          analogWrite(GREEN_PIN,(mySerial.read()/100.0f)*1023);
+          analogWrite(RED_PIN,(mySerial.read()/100.0f)*1023);
           while(millis() < t + 30000){
           }  
           break;
         case 27: //0x1B
-          Serial.println(_month);
-          Serial.println(_day);
-          Serial.println(absoluteMaxTemp);
-          Serial.println(absoluteMinTemp);    
+          mySerial.println(_month);
+          mySerial.println(_day);
+          mySerial.println(absoluteMaxTemp);
+          mySerial.println(absoluteMinTemp);    
           break;    
         case 28:
           saveAutoRangeToEEPROM();
@@ -179,7 +179,7 @@ void readBluetoothCommands() {
           EEPROM.end();
           break;
         case 32:
-          analogWriteFreq(((int)(Serial.read()))*500);
+          analogWriteFreq(((int)(mySerial.read()))*500);
           break;
         case 33:
           setWIFi();
@@ -192,7 +192,7 @@ void readBluetoothCommands() {
           absoluteMaxTemp = 30.25f;
           break;
         case 36:
-          Serial.println(WiFi.status());
+          mySerial.println(WiFi.status());
           break;
         case 37:
           break;
@@ -205,18 +205,18 @@ void readBluetoothCommands() {
             ThingSpeak.begin(client);
             break;
         case 42:
-         lightLock = Serial.read();
-          Serial.println(lightLock);
+         lightLock = mySerial.read();
+          mySerial.println(lightLock);
           saveByte((byte)lightLock,27);
         break;  
         case 43:
             EEPROM.begin(37);
           delay(12);
-          Serial.println(EEPROM.read(27));
+          mySerial.println(EEPROM.read(27));
             EEPROM.end();
         break; 
         case 46:
-          shtIIRFilterCoef  = (float)(Serial.read()/100.0f);
+          shtIIRFilterCoef  = (float)(mySerial.read()/100.0f);
           break;
         case 47:
           getRfPocketRatio();
@@ -226,50 +226,50 @@ void readBluetoothCommands() {
           rf_pocketsLostCounter = 0;
           break;
         case 49:
-        Serial.println(maxRfTime);
-        Serial.println(minRFTime);
-        Serial.println((double)rqSum/rqSamples);
-        Serial.println(minRFTime2);
-        Serial.println((double)rqSum2/rqSamples);
+        mySerial.println(maxRfTime);
+        mySerial.println(minRFTime);
+        mySerial.println((double)rqSum/rqSamples);
+        mySerial.println(minRFTime2);
+        mySerial.println((double)rqSum2/rqSamples);
         break;
         case 50:
         enableProgrammingMode();
         break;
         }
-        Serial.flush();
         mySerial.flush();
+        serialFlush();
         
         t = millis();
       }
     }
     if(displayHeartBeatEnabled){
-      getHearBeatParams(Serial.read());
+      getHearBeatParams(mySerial.read());
     }else{
       if(!clockColorMode){
         displayWeatherData(true);
       }
-      mySerial.flush();  
+      serialFlush();  
     } 
   }
 }
 void enableProgrammingMode(){
   byte b[2] = {(byte)202,(byte)202};
-  mySerial.write(b,2);
-  mySerial.println(F("Programming mode"));
+  Serial.write(b,2);
+  Serial.println(F("Programming mode"));
   delay(60*1000);
-  mySerial.flush();
+  Serial.flush();
 }
 void getRfPocketRatio(){
-  Serial.println(rf_pocketsLostCounter);
-  Serial.println(rf_pocketsReceivedCounter);
-  Serial.println(((float)rf_pocketsLostCounter/(float)rf_pocketsReceivedCounter));
+  mySerial.println(rf_pocketsLostCounter);
+  mySerial.println(rf_pocketsReceivedCounter);
+  mySerial.println(((float)rf_pocketsLostCounter/(float)rf_pocketsReceivedCounter));
 }
 
 void setWIFi(){
    char charBuf1[10];
    char charBuf2[10];
-   Serial.readStringUntil('\n').toCharArray(charBuf1, 10);
-    Serial.readStringUntil('\n').toCharArray(charBuf2, 10);
+   mySerial.readStringUntil('\n').toCharArray(charBuf1, 10);
+    mySerial.readStringUntil('\n').toCharArray(charBuf2, 10);
    WiFi.begin(charBuf1, charBuf2);
    delay(7000);
   clearDisplay();
@@ -282,7 +282,7 @@ void setWIFi(){
 
 }
 void setBmpFilter(){
-  switch(Serial.read()){
+  switch(mySerial.read()){
     case 0:
        bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,    
        Adafruit_BMP280::SAMPLING_X2,   
@@ -308,29 +308,29 @@ void setBmpFilter(){
   delay(200);
 }
 void getColorMode() {
-  switch(Serial.read()) {
+  switch(mySerial.read()) {
   case 0:
-    colorModesRGB[0][0] = Serial.read();
-    colorModesRGB[0][1] = Serial.read();
-    colorModesRGB[0][2] = Serial.read();
+    colorModesRGB[0][0] = mySerial.read();
+    colorModesRGB[0][1] = mySerial.read();
+    colorModesRGB[0][2] = mySerial.read();
     saveByte((byte) colorModesRGB[0][0],1);
     saveByte((byte)colorModesRGB[0][1],2);
     saveByte((byte)colorModesRGB[0][2],3);
     break;
   case 1:
-    colorModesRGB[1][0] = Serial.read();
-    colorModesRGB[1][1] = Serial.read();
-    colorModesRGB[1][2] = Serial.read();
+    colorModesRGB[1][0] = mySerial.read();
+    colorModesRGB[1][1] = mySerial.read();
+    colorModesRGB[1][2] = mySerial.read();
     saveByte((byte)colorModesRGB[1][0],4);
     saveByte((byte)colorModesRGB[1][1],5);
     saveByte((byte)colorModesRGB[1][2],6);
     break;
   case 2:
-    colorModesHSV[0] = Serial.read();
+    colorModesHSV[0] = mySerial.read();
     saveByte((byte)colorModesHSV[0],7);
     break;
   case 3:
-    colorModesHSV[1] = Serial.read();
+    colorModesHSV[1] = mySerial.read();
     saveByte((byte)colorModesHSV[1],8);
     break;
   }
@@ -338,30 +338,30 @@ void getColorMode() {
 void getMaxima(float &q, float &z) {
   byte a,b;
 
-  byte val = Serial.read();
+  byte val = mySerial.read();
   if(val < 9){
     rangeMode[val] = true;
   }
   switch(val) {
   case 0: 
-    maxInsideTemp[1] =Serial.read();
-    minInsideTemp[1] = Serial.read();
+    maxInsideTemp[1] =mySerial.read();
+    minInsideTemp[1] = mySerial.read();
     q = maxInsideTemp[1];
     z = minInsideTemp[1];
     saveByte((byte)maxInsideTemp[1],9);
     saveByte((byte)minInsideTemp[1],10);
     break;
   case 1:
-    maxInsideHum[1] = Serial.read();
-    minInsideHum[1] = Serial.read();
+    maxInsideHum[1] = mySerial.read();
+    minInsideHum[1] = mySerial.read();
     q = maxInsideHum[1];
     z = minInsideHum[1];
     saveByte((byte)maxInsideHum[1] ,11);
     saveByte((byte)minInsideHum[1] ,12);
     break;
   case 2:
-    a = Serial.read();
-    b =Serial.read();
+    a = mySerial.read();
+    b =mySerial.read();
     maxPressure[1] = a+900;
     minPressure[1] = b+900;
     q = maxPressure[1];
@@ -370,49 +370,49 @@ void getMaxima(float &q, float &z) {
     saveByte((byte)b ,14);
     break;
   case 3:
-   // monthMax[_month] = Serial.read()*10;
- //   monthMin[_month] =Serial.read()*10;
-    a = Serial.read();
+   // monthMax[_month] = mySerial.read()*10;
+ //   monthMin[_month] =mySerial.read()*10;
+    a = mySerial.read();
     if(a >=50){
       a*=-1;
     }
-    _max[1] = (float)(a) + (Serial.read()/100.0f);
-     a = Serial.read();
+    _max[1] = (float)(a) + (mySerial.read()/100.0f);
+     a = mySerial.read();
     if(a >=50){
       a*=-1;
     }
-    _min[1] = (float)(a) + (Serial.read()/100.0f);
+    _min[1] = (float)(a) + (mySerial.read()/100.0f);
     q = _max[1];
     z = _min[1];
     break;
   case 4:
-    maxOutsideHum[1] = Serial.read();
-    minOutsideHum[1] = Serial.read();
+    maxOutsideHum[1] = mySerial.read();
+    minOutsideHum[1] = mySerial.read();
     saveByte((byte)maxOutsideHum[1] ,15);
     saveByte((byte)minOutsideHum[1] ,16);
     q = maxOutsideHum[1];
     z = minOutsideHum[1];
     break;
   case 5:
-    maxAverangeWind[1] = Serial.read();
+    maxAverangeWind[1] = mySerial.read();
     saveByte((byte)maxAverangeWind[1] ,17);
     q = maxAverangeWind[1];
     z = 0;
     break;
   case 6:
-    maxWind[1] =Serial.read();
+    maxWind[1] =mySerial.read();
     saveByte((byte)maxWind[1] ,18);
     q = maxWind[1];
     z = 0;
     break;
   case 7:
-    maxRain[1] = Serial.read();
+    maxRain[1] = mySerial.read();
     saveByte((byte)maxRain[1] ,19);
     q = maxRain[1];
     z = 0;
     break;
   case 8:
-    a = Serial.read();
+    a = mySerial.read();
     maxPressureChange[1] = maxPressureChange[0]*((float)a/100.0f);
     q = maxPressureChange[1];
     z = minPressureChange[0];
@@ -485,7 +485,7 @@ void sendSettings(boolean state) {
   bytes[28] =byte(networkOnlyMode);
   if (state) {
     bytes[49] = byte(autoRangeEnabled);
-    Serial.write(bytes, 29);
+    mySerial.write(bytes, 29);
   } else {
     bytes[29] = floor(temp);
     bytes[30] = ((temp - floor(temp))*100);
@@ -501,17 +501,17 @@ void sendSettings(boolean state) {
     bytes[40] = ((averangeWind - floor(averangeWind))*100);
     bytes[41] = rain;
     bytes[42] = byte(autoRangeEnabled);
-    Serial.write(bytes, 42);
+    mySerial.write(bytes, 42);
   }
-  Serial.flush();
+  mySerial.flush();
 }
 
 boolean checkResponse(boolean show){
   unsigned long t = millis();
   unsigned long t2 = millis();
   while(millis() < t+ SERIAL_TIMEOUT){
-    if(mySerial.available()){
-      if(mySerial.read() == 1){
+    if(Serial.available()){
+      if(Serial.read() == 1){
         return true;
       }else{
         return false;
@@ -537,8 +537,8 @@ boolean checkResponse(boolean show){
 int getResponse(){
   unsigned long t = millis();
   while(millis() < t+ SERIAL_TIMEOUT){
-    if(mySerial.available()){
-        return mySerial.parseInt();
+    if(Serial.available()){
+        return Serial.parseInt();
     }
     delay(1);
   }
