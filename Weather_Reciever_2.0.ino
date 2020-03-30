@@ -25,7 +25,7 @@ Adafruit_SHT31 sht31 = Adafruit_SHT31();
 #define RED_PIN 13
 #define GREEN_PIN 16
 #define BLUE_PIN 15
-//#define DHTPIN 14
+#define KNOB_PIN A0
 #define HC_CTRL_PIN 14
 #define SOFT_SERIAL_RX 5
 #define SOFT_SERIAL_TX 4
@@ -51,7 +51,7 @@ WiFiClient client;
 
 const float dht22TempMin = -40.0f; // dokumentacja -40C
 const float dht22TempMax = 50.0f;// dokumentacja 80C
-const float humMin = 0.0f; // dokumentacja sht31 i dht22 0%
+const float humMin = 2.0f; // dokumentacja sht31 i dht22 0%
 const float humMax = 100.0f;// dokumentacja sht31 i dht22 100%
 
 const float presMin = 60000.0f; //bmp085 300hpa
@@ -93,8 +93,6 @@ long sendInterval = 120000;
 unsigned long dayTimeInterval = 60000;
 int analogReadInterval = 300;
 
-long colorChangeInterval = sendInterval/3;
-int colorChangeIntervalResolution = 10;
 float brightness = 1;
 float lastBrightness = brightness;
 int8_t startDimHour = 22;
@@ -224,37 +222,15 @@ int analogValue = 0;
 int lastAnalogValue = 0;
 boolean displayHeartBeatEnabled = false;
 boolean transmitCurrentPressure = false;
+boolean bmpEnabled = true;
+boolean shtEnabled = true;
 //Flash real id:   001640EF
 //Flash real size: 4194304 bytes
 //Flash ide  size: 4194304 bytes
 //Flash ide speed: 40000000 Hz
 //Flash ide mode:  QIO
 boolean displayEnabled = true;
-
-void setHcSettings(){
-  while(Serial.available()){
-    byte b = Serial.read();
-    if(b == 'w'){
-        Serial.println("W_");
-        pinMode(HC_CTRL_PIN,INPUT);
-       digitalWrite(HC_CTRL_PIN,LOW);
-       break;
-    }else if(b == 'q'){
-      Serial.println("Q_");
-        pinMode(HC_CTRL_PIN,OUTPUT);
-            digitalWrite(HC_CTRL_PIN,LOW);
-            delay(40);
-            Serial.flush();
-          break;
-    }
-    mySerial.write(b);
-    yield();
-  }
-  while(mySerial.available()){
-      Serial.write(mySerial.read());
-     yield();
-  }
-}    
+   
 void setup() 
 {
  initialise();
@@ -297,6 +273,7 @@ if(millis() > sendTime +sendInterval){
   if(networkOnlyMode){
       networkVersion();
   }
+  caclulateAvgMeasurements();
   sendData(0,false);
    if(millis() > syncTime + SYNC_TIME_INTERVAL){
       getDateTime();
@@ -308,8 +285,7 @@ if(millis() > sendTime +sendInterval){
     sendDailyMaximaTimeCheck();
     calculateAutoRange(_month);
     sendAutoRangeToServer(1,false);
-    colorChangeInterval = 980;
-    colorChangeIntervalResolution = 35; 
+    updateWeatherSegments(false);
     serialFlush();
   sendTime =millis();
 }
@@ -333,7 +309,6 @@ if(millis() > displayBrightnesTime + DISPLAY_BRIGHTNESS_INTERVAL){
   readPressure();
   detectPressureChange(currentPressure);
   updateFluidDimming();
-  updateWeatherSegments();
 
 #ifdef DEBUG
  readBluetoothCommands();
@@ -341,7 +316,7 @@ if(millis() > displayBrightnesTime + DISPLAY_BRIGHTNESS_INTERVAL){
 
 }
 void readPressure(){
-  if(millis() > pressureReadTime + PRESSURE_READ_INTERVAL){
+  if(millis() > pressureReadTime + PRESSURE_READ_INTERVAL&&bmpEnabled){
     currentPressure = bmp.readPressure();
     if(currentPressure > 94500.0f && currentPressure < 106500.0f&&!isnan(currentPressure)){
        presSum+=currentPressure;
@@ -355,7 +330,7 @@ void readPressure(){
 }
 
 void shtRead(){
-  if(millis() > sthTime+ SHT_READ_INTERVAL){
+  if(millis() > sthTime+ SHT_READ_INTERVAL&&shtEnabled){
         float t = sht31.readTemperature();
         float h = sht31.readHumidity(); 
         if(t >13&&t < 50&&h>=0&&h<=100&&!isnan(t)&&!isnan(h)){  
@@ -363,7 +338,6 @@ void shtRead(){
             humSum+=h;
             samples++;  
             shtColorRealTimeUpdate(t,h);
-//            lastSht = t;
         }
      sthTime = millis();  
   }   
@@ -382,7 +356,7 @@ void shtColorRealTimeUpdate(float t, float h){
 
 void knobController(){
    if(millis() > analogReadTime + analogReadInterval&&enableKnob){
-    analogValue = map(analogRead(A0),4,879,0,200);     
+    analogValue = map(analogRead(KNOB_PIN),4,879,0,200);     
     if(analogValue > lastAnalogValue +1||analogValue < lastAnalogValue -1){   
  //if(analogValue != lastAnalogValue){  
       brightness = 1 -(analogValue/200.0f);

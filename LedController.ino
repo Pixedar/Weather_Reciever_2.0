@@ -41,11 +41,6 @@ void setLedColor(int8_t _mode){
    }
    break;
   }
-//  Serial.println("rgb");
-//  Serial.println(r);
- //  Serial.println(g);
- //   Serial.println(b);
- //   Serial.println("================================================");
 }
 void setHSV(const int8_t index){
   HSV_to_RGB(HSV_H_MAX+hsv_h_ext -getColor(colorModesHSV[index],0,HSV_H_MAX+hsv_h_ext),100,100);
@@ -98,28 +93,18 @@ int getColor(int8_t value,int n,int m){
 int getVal(int index,int n,int m,int8_t value){
     switch(value){
     case 3: return normalize(currentPressure+PRESSURE_FIX,minPressure[index],maxPressure[index],m,n);
-    case 1:
- //   Serial.println(shtCurrentTemp);
- //   Serial.println(maxInsideTemp[index]);
- //    Serial.println(minInsideTemp[index]);
-  //    Serial.println(m);
-   //      Serial.println(n);
-    //          Serial.println(normalize(shtCurrentTemp,maxInsideTemp[index],minInsideTemp[index],m,n));
-    return normalize(shtCurrentTemp,maxInsideTemp[index],minInsideTemp[index],m,n);
+    case 1:return normalize(shtCurrentTemp,maxInsideTemp[index],minInsideTemp[index],m,n); 
     case 2: return normalize(shtCurrentHum,maxInsideHum[index],minInsideHum[index],m,n);
     case 4: return normalize(currentShtTempO,_max[index],_min[index],m,n);
-    case 5: return normalize(currentShtHumO,minOutsideHum[index],maxOutsideHum[index],n,m);
-  //  case 6: return map(((currentWind + 0.5*lastCurrentWind)/1.5f)*k,0,maxWind*k,m,n);
+    case 5: return normalize(currentShtHumO,minOutsideHum[index],maxOutsideHum[index],m,n);
     case 7: return normalize(windColor,0,maxWind[index],n,m);
-     case 6: return normalize(interpolatedAverangeWind,0,maxAverangeWind[index],n,m);
-  //  case 6: return normalize(averangeWind,0,maxAverangeWind[index],n,m);
+    case 6: return normalize(interpolatedAverangeWind,0,maxAverangeWind[index],n,m);
     case 8: return normalize(rain,0,maxRain[index],n,m);
     case 9: return normalize2(pressureChange,minPressureChange[index],maxPressureChange[index],n,m);
     default: return m;
     }
 }
 int normalize(float val, float a, float b, int m, int n){
-   // Serial.println("norm");
  if(a>b){
   if(val > a){
     val = a;
@@ -134,10 +119,6 @@ int normalize(float val, float a, float b, int m, int n){
   }
  }
  const int k = 100;
-  //   Serial.println(val*k);
-  //   Serial.println(a*k);
-   //   Serial.println(b*k);
-  //          Serial.println(map(val*k,a*k,b*k,m,n));
  return map(val*k,a*k,b*k,m,n);
 }
 int normalize2(float val, float a, float b, int m, int n){

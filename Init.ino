@@ -12,7 +12,7 @@ void initialise(){
   
   Serial.begin(9600);
   mySerial.begin(57600);
-
+  
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
   pinMode(GREEN_PIN,OUTPUT);
@@ -29,23 +29,21 @@ void initialise(){
   displayA();     
   display.setTextSize(1.5);
   display.setTextColor(WHITE);
-  
-  while(!bmp.begin()){
-    display.println(F("Pressure sensor error"));
-    displayA();
-    delay(100);
-  }
- bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,    
- Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
- Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
- Adafruit_BMP280::FILTER_X16,      /* Filtering. */
- Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 
+  if(!bmp.begin()){
+    display.println(F("BMP error"));
+    displayA();
+    delay(1000);
+    bmpEnabled = false;
+  }else{
+      setBmpSampling();
+  }
   if (!sht31.begin(0x44)) {   
-    display.println("SHT31 error");
+    display.println(F("SHT31 error"));
     displayA();
+    delay(1000);
+    shtEnabled = false;
   }
-
   loadSettings();
 
   display.print(F("WiFi connecting"));
@@ -55,44 +53,37 @@ void initialise(){
   connectToWiFi(); 
 
   if(WiFi.status() == WL_CONNECTED){
+    initOTA();
     display.print(F(" OK"));
     display.println();
     display.print(F("Time Synh"));
     displayA();
     timeClient.begin();
-    timeClient.setTimeOffset(7200);   
+    timeClient.setTimeOffset(14400);   
     getDateTime();
-    initOTA();
-    display.print(F(" "));
-    printDate();
-    display.println();
+    int tmp = fluidDimming;
+    fluidDimming = 0;
+    turnOffLedAtSpecyficTime();
+    fluidDimming = tmp;
+    display.println(F(" OK"));
+    display.println(getTimestamp(timeClient.getEpochTime()));
     displayA();
-    
     display.print(F("Sending status"));
     displayA();
     sendError("RECEIVER RESET");
     display.print(F(" OK"));
     display.println();
-    displayA();
-    
+    displayA();   
     display.println(F("Loading Auto Range"));
-    displayA();
-    
+    displayA();   
     initAutoRange();
   
   }else{
     display.print(F(" ERR"));
-     display.println(F("Offline Mode"));
+    display.println(F("Offline Mode"));
     displayA();
-  }
-
-  turnOffLedAtSpecyficTime(); 
-    
-  int tmp = fluidDimming;
-  fluidDimming = 0;
-  turnOffLedAtSpecyficTime();
-  fluidDimming = tmp;
-   
+  } 
+        
   displayBrightnesTime =millis();
   analogReadTime =millis();
   pressureReadTime = millis();
@@ -106,6 +97,7 @@ void initialise(){
   
   serialFlush();
 }
+
 void connectToWiFi(){
   if(handleWiFiConnect()) return; 
   int8_t numberOfNetworks = WiFi.scanNetworks();
@@ -132,20 +124,10 @@ boolean handleWiFiConnect(){
   }
   return true;
 }
-void printDate(){
-    display.print(_year);
-   display.print(F("-"));
-  if(_month < 10){
-   display.print(0); 
-   display.print(_month); 
-  }else{
-   display.print(_month);  
-  }
-  display.print(F("-"));
-  if(_day < 10){
-    display.print(0);
-    display.print(_day);
-  }else{
-     display.print(_day);
-  }
+void setBmpSampling(){
+ bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,    
+ Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
+ Adafruit_BMP280::SAMPLING_X16,    /* Pressure oversampling */
+ Adafruit_BMP280::FILTER_X16,      /* Filtering. */
+ Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 }

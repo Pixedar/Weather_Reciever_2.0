@@ -352,7 +352,6 @@ void calculateAutoRange(int monthV) {
     _min[0] =absoluteMinTemp;
 
     if (temp > maxInsideTemp[0]&&!isnan(temp)) {
-    ///  maxInsideTemp[0] = temp;
            tempShtCtn++;
       if(tempShtCtn*sendInterval >= SHT_MAXIMA_DURATION){
           maxInsideTemp[0] = temp;
@@ -360,8 +359,6 @@ void calculateAutoRange(int monthV) {
       } 
   //    saveRangeToEEPROM(maxInsideTemp[0],59);
     } else if (temp < minInsideTemp[0]&&!isnan(temp)) {
-  //    minInsideTemp[0] = temp;
-
        tempShtCtn++;
       if(tempShtCtn*sendInterval >= SHT_MAXIMA_DURATION){
           minInsideTemp[0] = temp;

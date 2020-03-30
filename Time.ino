@@ -3,7 +3,6 @@ boolean dimmingFlag = false;
 boolean isDST;
 unsigned long fluidDimmingTime =0;
 boolean way = false;
-//long checkTimeInterval = 3600*1000;
 void updateFluidDimming(){
   if(dimmingFlag&&millis() > fluidDimmingTime +FLUID_DIMING_INTERVAL){
     if(way){
@@ -99,10 +98,10 @@ void getDateTime(){
 
 
                  
-  isDST = checkDST();
-  if(!isDST){
-   _hour-=1; 
-  }
+//  isDST = checkDST();
+//  if(!isDST){
+//   _hour-=1; 
+//  }
 }
 
 

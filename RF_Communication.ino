@@ -3,7 +3,7 @@
 #define STRING_TRASMISSION_CODE 202
 #define ERROR_STRING_TRASMISSION_CODE 203
 #define REAL_TIME_DATA_SIZE 15
-#define TIMEOUT 10
+#define TIMEOUT 5
 
 #define SHT_ID 170
 #define DHT_ID 171
@@ -31,6 +31,7 @@ void rfCommunication(){
     if(rf_id == 0){
  //     Serial.flush();
          serialFlush();
+         rf_pocketsLostCounter++;
       continue;
     }
     switch((int)rf_id){
@@ -187,6 +188,50 @@ void serialFlush(){
     Serial.read();
     yield();
   }
+}
+void setHcSettings(){
+  while(Serial.available()){
+    byte b = Serial.read();
+    if(b == 'w'){
+        Serial.println("W_");
+        pinMode(HC_CTRL_PIN,INPUT);
+       digitalWrite(HC_CTRL_PIN,LOW);
+       break;
+    }else if(b == 'q'){
+      Serial.println("Q_");
+        pinMode(HC_CTRL_PIN,OUTPUT);
+            digitalWrite(HC_CTRL_PIN,LOW);
+            delay(40);
+            Serial.flush();
+          break;
+    }
+    mySerial.write(b);
+    yield();
+  }
+  while(mySerial.available()){
+      Serial.write(mySerial.read());
+     yield();
+  }
+} 
+boolean hcSetBoundRate(int bound){
+  hcEnableCommandMode();
+  Serial.print("AT+B" + String(bound));
+  String result = Serial.readString();
+  hcDisableCommandMode();
+  if(result.equals("OK")) return true;
+  return false;
+}
+void hcEnableCommandMode(){
+  pinMode(HC_CTRL_PIN,OUTPUT);
+  digitalWrite(HC_CTRL_PIN,LOW);
+  delay(40);
+  serialFlush();
+}
+void hcDisableCommandMode(){
+  pinMode(HC_CTRL_PIN,OUTPUT);
+  digitalWrite(HC_CTRL_PIN,LOW);
+  delay(40);
+  serialFlush();
 }
 //czas wykonania funckji interwal 30ms 115200bps rozmiar 15*2
 //max 19273 ~ 19ms

@@ -112,7 +112,7 @@ void caclulateAvgMeasurements(){
     }else{
       dhtHumO = round((dhtHumOsum*q)/dhtOsamples)/q;
     }
-    if(dhtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO!=BAD_VALUE_ERROR_CODE){
+    if(dhtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO!=BAD_VALUE_ERROR_CODE&&dhtHumO>=humMin&&dhtHumO <=humMax){
       shtHumO = (dhtHumO+shtHumO)/2.0f;
     }
     if(analogLightOsamples == 0){
@@ -183,7 +183,13 @@ String setFieldsForChannelB(){
 //  }else{
 //    error+="presO= "+String(presO);
 //  }
-  ThingSpeak.setField(8, String(shtOsamplesCpy));
+  String s = "1";
+if(rf_pocketsReceivedCounter!=0){
+   s =String((float)rf_pocketsLostCounter/rf_pocketsReceivedCounter);
+}
+  ThingSpeak.setField(8, String(shtOsamplesCpy) + " " + String(Serial.available()) + " " + String(rf_pocketsLostCounter) +" " + String(rf_pocketsReceivedCounter) + " " +s);
+// ThingSpeak.setField(8, String(shtOsamplesCpy));
+
   return error;
 }
 String setFieldsForChannelA(){
@@ -379,8 +385,8 @@ unsigned long readFieldsFromMemeory(){
   return createdAtTime;
 }
 void sendData(unsigned long createdAtTime,boolean saved) { 
+  displayWeatherData(true);
   displayNotification();
-  caclulateAvgMeasurements();
   String error = setFieldsForChannelA();
   if(createdAtTime>0){
     ThingSpeak.setCreatedAt(getTimestamp(createdAtTime));
@@ -416,15 +422,21 @@ void sendData(unsigned long createdAtTime,boolean saved) {
   //  }
       savedDataSendTime =millis();
    if(!networkOnlyMode){  
-  error+= setFieldsForChannelB();
-  httpCode =ThingSpeak.writeFields(556803, debugApikey); 
+    error+= setFieldsForChannelB();
+    httpCode =ThingSpeak.writeFields(556803, debugApikey); 
    }
     success = true;
     attempts =0;     
   }
-  if((float)(rf_pocketsLostCounter/rf_pocketsReceivedCounter) > POCKET_LOST_RATIO_THRESHOLD){
-    error+="pocket lost ratio: " + String((float)(rf_pocketsLostCounter/rf_pocketsReceivedCounter),3);
+  float ratio = 1.0f;
+  if(rf_pocketsReceivedCounter!=0){
+    ratio = (float)(rf_pocketsLostCounter/rf_pocketsReceivedCounter);
   }
+  if(ratio > POCKET_LOST_RATIO_THRESHOLD){
+    error+="pocket lost ratio: " + String(ratio,3);
+  }
+  rf_pocketsLostCounter = 0;
+  rf_pocketsReceivedCounter =0;
   if (!error.equals("")) {
     sendError(error);
     dataError = true;

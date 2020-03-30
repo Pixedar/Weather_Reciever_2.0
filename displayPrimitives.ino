@@ -40,8 +40,6 @@ const unsigned char therm2 [] = {
 0x06, 0x60, 0x06, 0x60, 0x0C, 0x30, 0x08, 0x10, 0x08, 0x10, 0x0C, 0x30, 0x06, 0x60, 0x03, 0xC0
 };
 int yMargins[2];
-//yMargintext = textYmargin
-//yMarginIcon = 0
 int xQ = 7;
 int yQ = 22;
 int sizeQ = 0;
@@ -54,51 +52,6 @@ void drawTempSegment(int yMargintext, int yMarginIcon){
    display.drawBitmap(0,yMarginIcon, therm2, iconSize , iconSize , 1);
    display.drawBitmap(iconXmargin,yMarginIcon, therm2, iconSize , iconSize , 1);
    display.fillCircle(iconXmargin,yMarginIcon+2,1,WHITE);
-//   if((char)Serial.read() == 'a'){
-//      xQ--;
-//         Serial.println(xQ);
-//   Serial.println(yQ);
-//   Serial.println(sizeQ);
-//     Serial.println(sizeW);
-//   }
-//   if((char)Serial.read() == 'd'){
-//      xQ++;
-//      Serial.println(textYmargin+5+2*iconSize);
-//      Serial.println(2*iconSize +iconYmargin*3);
-//         Serial.println(xQ);
-//   Serial.println(yQ);
-//   Serial.println(sizeQ);
-//     Serial.println(sizeW);
-//   }
-//    if((char)Serial.read() == 'w'){
-//      yQ++;
-//         Serial.println(xQ);
-//   Serial.println(yQ);
-//   Serial.println(sizeQ);
-//     Serial.println(sizeW);
-//   }
-//    if((char)Serial.read() == 's'){
-//      yQ--;
-//         Serial.println(xQ);
-//   Serial.println(yQ);
-//   Serial.println(sizeQ);
-//     Serial.println(sizeW);
-//   }
-//   if((char)Serial.read() == 'q'){
-//      sizeQ--;
-//         Serial.println(xQ);
-//   Serial.println(yQ);
-//   Serial.println(sizeQ);
-//     Serial.println(sizeW);
-//   }
-//    if((char)Serial.read() == 'e'){
-//      sizeW++;
-//         Serial.println(xQ);
-//   Serial.println(yQ);
-//   Serial.println(sizeQ);
-//   Serial.println(sizeW);
-//   }
-
 
 if(shtCurrentTemp !=0){
 float sizeA = round(map(shtCurrentTemp,minInsideTemp[0],maxInsideTemp[0],0,11));
@@ -145,17 +98,13 @@ void drawHumSegment(int yMargintext, int yMarginIcon){
    }
     
 }
-//yMargintext = textYmargin+5+2*iconSize
-//yMarginIcon = 2*iconSize +iconYmargin*3
 void drawWindSegment(int yMargintext, int yMarginIcon){
       display.setCursor(textXmarginA,yMargintext);
       display.println(String(maxCurrentWind)+" kph");      
-       display.drawBitmap(0,yMarginIcon , wind, iconSize , iconSize, 1);
-       
-     display.drawBitmap(iconXmargin,yMarginIcon, barometer, iconSize , iconSize, 1);
-
-       display.setCursor(textXmarginB,yMargintext);
-       display.println(String(currentPressure/100.0f,1) + "hPa");
+      display.drawBitmap(0,yMarginIcon , wind, iconSize , iconSize, 1); 
+      display.drawBitmap(iconXmargin,yMarginIcon, barometer, iconSize , iconSize, 1);
+      display.setCursor(textXmarginB,yMargintext);
+      display.println(String(currentPressure/100.0f,1) + "hPa");
 }
 void updateMargins(int index){
     switch(index){
@@ -187,11 +136,13 @@ uint8_t incSegIndex(uint8_t index){
   }
   return index;
 }
-void updateWeatherSegments(){
-  if(millis() > segmentUpdateTime + SEG_UPDATE_INERVAL){
+void updateWeatherSegments(boolean flag){
+  if(millis() > segmentUpdateTime + SEG_UPDATE_INERVAL&&flag){
     segmentsIndex = incSegIndex(segmentsIndex);
     segmentUpdateTime =millis();
+    return;
   }
+  segmentsIndex = incSegIndex(segmentsIndex);
 }
 
  void drawLoadingBar(float progress,boolean showCircle){
@@ -210,7 +161,6 @@ void clearLoadingBar(){
 }
 void displayWeatherData(boolean flag){
   if(!clockColorMode&&!displayHeartBeatEnabled){  
- //   while(true){
     clearDisplay();  
       uint8_t tmp = segmentsIndex;
       for(uint8_t j =0; j < 3; j++){
@@ -221,9 +171,6 @@ void displayWeatherData(boolean flag){
       if(flag){
           displayA(); 
       }
-   //      delay(2);
-    // }
-  
   }
   }
 boolean displayConnectionError(int httpCode ){
