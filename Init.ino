@@ -6,13 +6,27 @@ const char *ssid3 =  "OnePlus 7Pro";
 const char *pass3 =  "W112Qzcx98";
 const char *ssid4 ="AP-Media_6860";
 const char *pass4 ="cekincekin";
+
+IPAddress ip(192,168,8,100);            // IP address of the server
+IPAddress gateway(192,168,8,1);           // gateway of your network
+IPAddress subnet(255,255,255,0);          // subnet mask of your network
+
+
 void initialise(){
   pinMode(HC_CTRL_PIN,INPUT);
   digitalWrite(HC_CTRL_PIN,LOW);
-  
+//          pinMode(HC_CTRL_PIN,OUTPUT);
+//       digitalWrite(HC_CTRL_PIN,LOW);
   Serial.begin(9600);
+//Serial.begin(230400);
   mySerial.begin(57600);
-  
+
+//  while(true){
+//    while(Serial.available()){
+//      mySerial.write(Serial.read());
+//    }
+//    delay(1);
+//  }
   pinMode(RED_PIN,OUTPUT);
   pinMode(BLUE_PIN,OUTPUT);
   pinMode(GREEN_PIN,OUTPUT);
@@ -51,7 +65,8 @@ void initialise(){
   WiFi.mode(WIFI_STA);
   ThingSpeak.begin(client);
   connectToWiFi(); 
-
+ // Serial.println("IP");
+//  Serial.println(WiFi.subnetMask());
   if(WiFi.status() == WL_CONNECTED){
     initOTA();
     display.print(F(" OK"));
@@ -77,7 +92,7 @@ void initialise(){
     display.println(F("Loading Auto Range"));
     displayA();   
     initAutoRange();
-  
+ //   initServer();
   }else{
     display.print(F(" ERR"));
     display.println(F("Offline Mode"));
@@ -94,11 +109,13 @@ void initialise(){
   sendTime = millis();
   displayTime = millis();
   rgbTime = millis();
-  
+  maxPressureChange[0] = 0;
+  minPressureChange[0] = 10000;
   serialFlush();
 }
 
 void connectToWiFi(){
+  //WiFi.config(ip,gateway,subnet);  
   if(handleWiFiConnect()) return; 
   int8_t numberOfNetworks = WiFi.scanNetworks();
   for(int8_t i =0; i<numberOfNetworks; i++){

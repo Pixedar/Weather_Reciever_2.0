@@ -40,7 +40,17 @@ void setLedColor(int8_t _mode){
       setHeatMode(1);
    }
    break;
+   case 4:
+    calcColor();
+   break;
   }
+}
+void calcColor(){
+  r = map(r_freq,min_r_freq,max_r_freq,0,1023);
+  g = map(g_freq,min_g_freq,max_g_freq,0,1023);
+  b = map(b_freq,min_b_freq,max_b_freq,0,1023);
+  wp=1;
+  
 }
 void setHSV(const int8_t index){
   HSV_to_RGB(HSV_H_MAX+hsv_h_ext -getColor(colorModesHSV[index],0,HSV_H_MAX+hsv_h_ext),100,100);
@@ -97,7 +107,7 @@ int getVal(int index,int n,int m,int8_t value){
     case 2: return normalize(shtCurrentHum,maxInsideHum[index],minInsideHum[index],m,n);
     case 4: return normalize(currentShtTempO,_max[index],_min[index],m,n);
     case 5: return normalize(currentShtHumO,minOutsideHum[index],maxOutsideHum[index],m,n);
-    case 7: return normalize(windColor,0,maxWind[index],n,m);
+    case 7: return normalize(currentWind,0,maxWind[index],n,m);
     case 6: return normalize(interpolatedAverangeWind,0,maxAverangeWind[index],n,m);
     case 8: return normalize(rain,0,maxRain[index],n,m);
     case 9: return normalize2(pressureChange,minPressureChange[index],maxPressureChange[index],n,m);
@@ -119,7 +129,7 @@ int normalize(float val, float a, float b, int m, int n){
   }
  }
  const int k = 100;
- return map(val*k,a*k,b*k,m,n);
+ return mapF(val*k,a*k,b*k,m,n);
 }
 int normalize2(float val, float a, float b, int m, int n){
   if(val < a){
@@ -127,7 +137,7 @@ int normalize2(float val, float a, float b, int m, int n){
   }else if(val > b){
     val = b;
   } 
- return map(val,a,b,m,n);
+ return mapF(val,a,b,m,n);
 }
 void HSV_to_RGB(float h, float s, float v)
 {

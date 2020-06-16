@@ -13,16 +13,27 @@
 #define RAIN_ID 175
 #define BMP_ID 176
 
+#define COLOR_ID 50
+#define WIND_ID 51
+#define PHOTORESISTOR_LIGHT_ID 52
+#define UV_LIGHT_ID 53
+#define BH_LIGHT_ID 54
+#define ANALOG_RAIN_ID 55
+#define WIND_DIR_ID 56
+#define EMF_ID 57
+
 byte rf_id;
 byte j;
 byte tmpBuf[4];
 float tmpValA =0;
 int tmpValB =0;
+unsigned long tmpValC = 0;
 float rangeCheckA;
 int rangeCheckB;
+unsigned long rangeCheckC;
 unsigned long timeOutCtn;
 boolean successFlag = false;
-
+byte lastRainId = 255;
 void rfCommunication(){
   while(Serial.available()){
     networkOnlyMode = false;
@@ -35,13 +46,15 @@ void rfCommunication(){
       continue;
     }
     switch((int)rf_id){
+      case WIND_ID: readWind(); break;
+      case COLOR_ID: readColor(); break;
       case SHT_ID: readSht(); break;
-      case ANALOG_HUM_ID: readAnalogHum(); break;
-      case ANALOG_RAIN_ID: readAnalogRain(); break;
-      case ANAOG_LIGHT_ID: readAnalogLight(); break;
+    //  case ANALOG_HUM_ID: readAnalogHum(); break;
+    //  case ANALOG_RAIN_ID: readAnalogRain(); break;
+   //   case ANAOG_LIGHT_ID: readAnalogLight(); break;
       case BMP_ID: readBmp(); break;
       case DHT_ID: readDht(); break;
-      case RAIN_ID: rain++; break;
+      case RAIN_ID: readRain(); break;
       case STRING_TRASMISSION_CODE: readText(false); break;
       case ERROR_STRING_TRASMISSION_CODE: readText(true); break;
       default: serialFlush();
@@ -54,7 +67,110 @@ void rfCommunication(){
     yield();
   }
 }
+void readRain(){
+  byte k = Serial.read();
+  if(isnan(k))return;
+  if(k!= lastRainId){
+    rain++;
+  }
+  lastRainId = k;
+}
+unsigned long k1 = 0;
+unsigned long k2 = 0;
+unsigned long k3 = 0;
+float lastK = 0;
+double sumK = 0;
+double kCtn = 0;
 
+unsigned long n1 = 0;
+unsigned long n2 = 0;
+unsigned long n3 = 0;
+float lastN = 0;
+double sumN = 0;
+double nCtn = 0;
+
+
+void readWind(){
+    k1++;
+    boolean flagC = false;
+    float w = readFloat(flag);
+    if(flagC){
+      k2++;
+    }
+    if(isnan(w)){
+      k3++;
+    }
+    if(!flagC&&!isnan(w)){
+    sumK+=w-lastK;
+    lastK=w;
+    kCtn++;
+    }
+    
+//  if(!read(rangeCheckC)) return;
+//  if(isnan(rangeCheckC)) return;
+//  float w = calcWind(rangeCheckC);
+//  if(isnan(w)||w < windMin||w>windMax)return;
+//  currentWind = w;
+}
+
+
+void readColor(){
+  for(int j =0; j < 4; j++){
+      n1++;
+    boolean flagC = false;
+    float w = readUint16(flag);
+    if(flagC){
+      n2++;
+    }
+    if(isnan(w)){
+      n3++;
+    }
+    if(w-lastN < 40000&&!flagC&&!isnan(w)){
+      sumK+=w-lastN;
+      lastN=w;
+      nCtn++;
+    }
+  }
+}
+
+//void readColor(){
+//  if(!read(rangeCheckB)) return;
+//  if(isnan(rangeCheckB)) return;
+//  r_freq = rangeCheckB;
+//  if(r_freq > max_r_freq){
+//    max_r_freq = r_freq;
+//  }
+//  if(r_freq < min_r_freq){
+//    min_r_freq = r_freq;
+//  }
+//  if(!read(rangeCheckB)) return;
+//  if(isnan(rangeCheckB)) return;
+//  g_freq = rangeCheckB;
+//  if(g_freq > max_g_freq){
+//    max_g_freq = g_freq;
+//  }
+//  if(g_freq < min_g_freq){
+//    min_g_freq = g_freq;
+//  }
+//  if(!read(rangeCheckB)) return;
+//  if(isnan(rangeCheckB)) return;
+//  b_freq = rangeCheckB;
+//    if(b_freq > max_b_freq){
+//    max_b_freq = b_freq;
+//  }
+//  if(b_freq < min_b_freq){
+//    min_b_freq = b_freq;
+//  }
+//}
+//wiatromierz 9 cm od srodka do konca 
+// ok 7 cm od srodka do środka pułkuli 
+//jeden obrót to dwa sygnały
+float calcWind(unsigned long val){
+  if(val ==0) return -1;
+  const double pi = 3.14159265359d;
+  const double radius = 0.00009d; // w km, od środka do konca
+  return (float)((0.5*2*pi*radius)*((3600*1000000.0d)/((double)val)));
+}
 void readText(boolean sendAsError){
   if(!checkSerial()) return;
   String result = Serial.readStringUntil('\n');
@@ -130,6 +246,17 @@ boolean read(float &val){
   val = tmpValA;
   return true;
 }
+boolean read(unsigned long &val){
+  boolean flag = false;
+  for(j =0; j < DATA_ITERATION/2; j++){
+   tmpValC = readLong(flag);
+   if(flag) break;
+   if(tmpValC != readLong(flag)) flag = true;
+  }
+  if(flag) return false;
+  val = tmpValC;
+  return true;
+}
 boolean read(int &val){
   boolean flag = false;
   for(j =0; j < DATA_ITERATION/2; j++){
@@ -153,6 +280,9 @@ void getID(){
     for(j =0; j < DATA_ITERATION/2; j++){
         if(!checkSerial()) flag = true;
         rf_id = Serial.read();
+        if(rf_id == COLOR_ID||rf_id == WIND_ID){
+          return;
+        }
         if(!checkSerial()) flag = true;
         if(rf_id != Serial.read()) flag = true;
     }
@@ -168,6 +298,26 @@ float readFloat(boolean &flag){
       if(!checkSerial()){ flag = true; return 0;}
       tmpBuf[3] = Serial.read();
       float result = *((float*)(tmpBuf));
+      return result;
+}
+float readLong(boolean &flag){
+      if(!checkSerial()){ flag = true; return 0;}
+      tmpBuf[0] = Serial.read();
+      if(!checkSerial()){ flag = true; return 0;}
+      tmpBuf[1] = Serial.read();
+      if(!checkSerial()){ flag = true; return 0;}
+      tmpBuf[2] = Serial.read();
+      if(!checkSerial()){ flag = true; return 0;}
+      tmpBuf[3] = Serial.read();
+      unsigned long result = *((unsigned long*)(tmpBuf));
+      return result;
+}
+uint16_t readUint16(boolean &flag){
+      if(!checkSerial()){ flag = true; return 0;}
+      tmpBuf[0] = Serial.read();
+      if(!checkSerial()){ flag = true; return 0;}
+      tmpBuf[1] = Serial.read();
+      uint16_t result = *((uint16_t*)(tmpBuf));
       return result;
 }
 boolean checkSerial(){

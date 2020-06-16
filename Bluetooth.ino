@@ -235,6 +235,9 @@ void readBluetoothCommands() {
         case 50:
         enableProgrammingMode();
         break;
+        case 51:
+        colorMode = 4;
+        break;
         }
         mySerial.flush();
         serialFlush();

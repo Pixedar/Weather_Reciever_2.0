@@ -100,7 +100,7 @@ void drawHumSegment(int yMargintext, int yMarginIcon){
 }
 void drawWindSegment(int yMargintext, int yMarginIcon){
       display.setCursor(textXmarginA,yMargintext);
-      display.println(String(maxCurrentWind)+" kph");      
+      display.println(String(currentWind)+" kph");      
       display.drawBitmap(0,yMarginIcon , wind, iconSize , iconSize, 1); 
       display.drawBitmap(iconXmargin,yMarginIcon, barometer, iconSize , iconSize, 1);
       display.setCursor(textXmarginB,yMargintext);

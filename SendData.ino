@@ -115,26 +115,26 @@ void caclulateAvgMeasurements(){
     if(dhtHumO!=BAD_VALUE_ERROR_CODE&&shtHumO!=BAD_VALUE_ERROR_CODE&&dhtHumO>=humMin&&dhtHumO <=humMax){
       shtHumO = (dhtHumO+shtHumO)/2.0f;
     }
-    if(analogLightOsamples == 0){
-      analogLightO = BAD_VALUE_ERROR_CODE;
-    }else{
-      analogLightO = round((analogLightOsum*q)/analogLightOsamples)/q;
-    }
-    if(analogRainOsamples ==0){
-      analogRainO =BAD_VALUE_ERROR_CODE;
-    }else{
-      analogRainO = round((analogRainOsum*q)/analogRainOsamples)/q;
-    }
-    if(analogHumOsamples ==0){
-      analogHumO = BAD_VALUE_ERROR_CODE;
-    }else{
-      analogHumO = round((analogHumOsum*q)/analogHumOsamples)/q;
-    }
-    if(bmpOsamples ==0){
-      presO =  BAD_VALUE_ERROR_CODE;
-    }else{
-       presO = round((presOsum*q)/bmpOsamples)/q;
-    }
+//    if(analogLightOsamples == 0){
+//      analogLightO = BAD_VALUE_ERROR_CODE;
+//    }else{
+//      analogLightO = round((analogLightOsum*q)/analogLightOsamples)/q;
+//    }
+//    if(analogRainOsamples ==0){
+//      analogRainO =BAD_VALUE_ERROR_CODE;
+//    }else{
+//      analogRainO = round((analogRainOsum*q)/analogRainOsamples)/q;
+//    }
+//    if(analogHumOsamples ==0){
+//      analogHumO = BAD_VALUE_ERROR_CODE;
+//    }else{
+//      analogHumO = round((analogHumOsum*q)/analogHumOsamples)/q;
+//    }
+//    if(bmpOsamples ==0){
+//      presO =  BAD_VALUE_ERROR_CODE;
+//    }else{
+//       presO = round((presOsum*q)/bmpOsamples)/q;
+//    }
     shtOsamplesCpy = shtOsamples;
     shtOsamples =0;
     dhtOsamples =0;
@@ -210,6 +210,21 @@ String setFieldsForChannelA(){
       error+="rain= "+String(rain);
     }
     rain =0;
+
+ ThingSpeak.setField(6,String(k1) +"q" + String(k2)+"q"+String(k3)+"q"+String((float)kCtn/k1) +"q" +String(sumK/kCtn));
+ ThingSpeak.setField(7,String(n1) +"q" + String(n2)+"q"+String(n3)+"q"+String((float)nCtn/n1) +"q" +String(sumN/nCtn));
+ k1 = 0;
+k2 = 0;
+ k3 = 0;
+
+ sumK = 0;
+ kCtn = 0;
+
+n1 = 0;
+ n2 = 0;
+n3 = 0;
+ sumN = 0;
+ nCtn = 0;
 //      if(averangeWind <0|| averangeWind >49||((abs(lastAvgWind - averangeWind) > 10)&&!firstTime)){
 //        error+="averangeWind= "+String(averangeWind);
 //      }else if(!networkOnlyMode){ 
@@ -389,7 +404,7 @@ void sendData(unsigned long createdAtTime,boolean saved) {
   displayNotification();
   String error = setFieldsForChannelA();
   if(createdAtTime>0){
-    ThingSpeak.setCreatedAt(getTimestamp(createdAtTime));
+ //   ThingSpeak.setCreatedAt(getTimestamp(createdAtTime));
   }else{
     createdAtTime = getEpochTime(false);
   }
@@ -421,10 +436,10 @@ void sendData(unsigned long createdAtTime,boolean saved) {
     
   //  }
       savedDataSendTime =millis();
-   if(!networkOnlyMode){  
-    error+= setFieldsForChannelB();
-    httpCode =ThingSpeak.writeFields(556803, debugApikey); 
-   }
+//   if(!networkOnlyMode){  
+//    error+= setFieldsForChannelB();
+//    httpCode =ThingSpeak.writeFields(556803, debugApikey); 
+//   }
     success = true;
     attempts =0;     
   }

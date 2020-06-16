@@ -49,6 +49,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP,"tempus1.gum.gov.pl");
 WiFiClient client;
 
+
 const float dht22TempMin = -40.0f; // dokumentacja -40C
 const float dht22TempMax = 50.0f;// dokumentacja 80C
 const float humMin = 2.0f; // dokumentacja sht31 i dht22 0%
@@ -61,6 +62,7 @@ const float sht31TempMin = -40.0f; // dokumentacja -40C
 const float sht31TempMax = 50.0f;// dokumentacja 125C
 const int analogMin = 0;
 const int analogMax = 1023;
+const unsigned long windMin= 0;
 
 float shtCurrentHum =0;
 float shtCurrentTemp =0;
@@ -126,6 +128,19 @@ int r;
 int g;
 int b;
 
+int r_freq;
+int g_freq;
+int b_freq;
+
+int max_r_freq =0;
+int max_g_freq =0;
+int max_b_freq =0;
+
+int min_r_freq = 1000000;
+int min_g_freq= 1000000;
+int min_b_freq= 1000000;
+
+
 float shtTempO =0;
 float shtHumO = 0;
 float analogLightO =0;
@@ -161,11 +176,11 @@ unsigned long rf_pocketsLostCounter = 0;
 unsigned long rf_pocketsReceivedCounter = 1;
 
 float averangeWind =0;
-byte maxCurrentWind = 0;
-byte currentWind = 0;
+float currentWind = 0;
+float maxCurrentWind =0;
 int windCounter = 0;
 float windSum = 0;
-
+float windMax = 300;
 float temp = 0;
 float hum = 0;
 float pres = 0;
@@ -215,7 +230,7 @@ float wp = 0;
 int lastR = 0;
 int lastB = 0;
 int lastG =0;
-float windColor = 0;
+
 int hsv_h_ext = 21;
 
 int analogValue = 0;
@@ -247,27 +262,28 @@ unsigned long rqSum2 =0;
 int rqInterval = 0;
 void loop() 
 {
-rqInterval =rf_communicationTimer2 -millis();
+//  handle_module_B();
+//rqInterval =rf_communicationTimer2 -millis();
+//
+//rqSum2+=rqInterval;
+//if(rqInterval < minRFTime2){
+//  minRFTime2 = rqInterval;
+//}
 
-rqSum2+=rqInterval;
-if(rqInterval < minRFTime2){
-  minRFTime2 = rqInterval;
-}
-
-rf_communicationTimer =micros();
+//rf_communicationTimer =micros();
 rfCommunication();
-unsigned long rQ = micros() - rf_communicationTimer;
-rf_communicationTimer2 = millis();
-if(rQ < minRFTime){
-  minRFTime = rQ;
-}
-
-if(rQ > maxRfTime){
-  maxRfTime = rQ;
-}
-
-rqSamples++;
-rqSum+=rQ;
+//unsigned long rQ = micros() - rf_communicationTimer;
+//rf_communicationTimer2 = millis();
+//if(rQ < minRFTime){
+//  minRFTime = rQ;
+//}
+//
+//if(rQ > maxRfTime){
+//  maxRfTime = rQ;
+//}
+//
+//rqSamples++;
+//rqSum+=rQ;
 
 if(millis() > sendTime +sendInterval){
   if(networkOnlyMode){
@@ -308,7 +324,7 @@ if(millis() > displayBrightnesTime + DISPLAY_BRIGHTNESS_INTERVAL){
   sendSavedData();
   readPressure();
   detectPressureChange(currentPressure);
-  updateFluidDimming();
+ // updateFluidDimming();
 
 #ifdef DEBUG
  readBluetoothCommands();
